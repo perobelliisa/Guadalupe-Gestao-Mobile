@@ -3,9 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useState } from "react";
 import Botao from "../../components/Botao";
 import CampoTexto from "../../components/CampoTexto";
-import { getBiometria } from "../../services/biometria";
-import { realizarLogin } from "../../services/login";
-import { getBiometriaLiberada, salvarUsuario } from "../../services/usuarioStorage";
+import { realizarLogin, realizarLoginComBiometria } from "../../services/login";
 import css from "./LoginStyle";
 
 export default function Login({ navigation }) {
@@ -41,29 +39,13 @@ export default function Login({ navigation }) {
         setCarregando(true);
 
         try {
-            var biometriaLiberada = await getBiometriaLiberada();
-
-            if (!biometriaLiberada) {
-                setCarregando(false);
-                setErro("Faça o login com e-mail e senha antes de usar a biometria.");
-                return;
-            }
-
-            var resultado = await getBiometria();
-
-            if (!resultado) {
-                setCarregando(false);
-                setErro("Não foi possível validar a biometria.");
-                return;
-            }
-
-            await salvarUsuario(1, "Missão Guadalupe", "missaoguadalupe@gmail.com");
+            await realizarLoginComBiometria();
             setCarregando(false);
             navigation.replace("Home");
             return;
         } catch (erroBiometria) {
             setCarregando(false);
-            setErro("Não foi possível validar a biometria.");
+            setErro(erroBiometria.message);
             return;
         }
     }

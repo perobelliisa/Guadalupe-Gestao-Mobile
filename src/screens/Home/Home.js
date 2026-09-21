@@ -1,9 +1,26 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { limparDados } from "../../services/usuarioStorage";
+import { getUsuario, limparDados } from "../../services/usuarioStorage";
 import css from "./HomeStyle";
 
 export default function Home({ navigation }) {
+    const [nome, setNome] = useState("");
+
+    useEffect(() => {
+        async function carregarUsuario() {
+            try {
+                const usuario = await getUsuario();
+                if (usuario) {
+                    setNome(usuario.nome);
+                }
+            } catch {
+                Alert.alert("Usuário", "Não foi possível carregar os dados do usuário.");
+            }
+        }
+        carregarUsuario();
+    }, []);
+
     // Estes dados serão preenchidos pela API futuramente.
     const dadosFinanceiros = {
         saldo: "",
@@ -20,8 +37,12 @@ export default function Home({ navigation }) {
     }
 
     async function sair() {
-        await limparDados();
-        navigation.replace("Login");
+        try {
+            await limparDados();
+            navigation.replace("Login");
+        } catch {
+            Alert.alert("Sair", "Não foi possível encerrar a sessão. Tente novamente.");
+        }
     }
 
     return (
@@ -29,7 +50,7 @@ export default function Home({ navigation }) {
             <View style={css.topo}>
                 <View style={css.usuario}>
                     <View style={css.avatar}><Text style={css.avatarTexto}>G</Text></View>
-                    <View><Text style={css.saudacao}>Boas-vindas</Text><Text style={css.nomeUsuario}>Olá!</Text></View>
+                    <View><Text style={css.saudacao}>Boas-vindas</Text><Text style={css.nomeUsuario}>{nome ? "Olá, " + nome + "!" : "Olá!"}</Text></View>
                 </View>
                 <Pressable onPress={sair} style={css.botaoSair}><Text style={css.textoSair}>Sair</Text></Pressable>
             </View>

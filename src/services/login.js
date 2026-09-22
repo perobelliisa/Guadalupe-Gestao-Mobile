@@ -2,6 +2,14 @@ import { requisicaoApi } from "./api";
 import { getBiometria } from "./biometria";
 import { getBiometriaLiberada, getToken, liberarBiometria, limparDados, salvarToken, salvarUsuario } from "./usuarioStorage";
 
+async function validarAdministrador(tipo) {
+    // No backend, o tipo 0 representa o administrador.
+    if (tipo !== 0 && tipo !== "0") {
+        await limparDados();
+        throw new Error("Você não tem autorização para acessar esse sistema");
+    }
+}
+
 export async function realizarLogin(email, senha) {
     if (!email.trim() || !senha) {
         throw new Error("Preencha e-mail e senha.");
@@ -17,6 +25,7 @@ export async function realizarLogin(email, senha) {
         throw new Error("A API não retornou os dados necessários para entrar.");
     }
 
+    await validarAdministrador(dados.tipo);
     await limparDados();
     try {
         await salvarToken(dados.token);
@@ -51,6 +60,7 @@ export async function realizarLoginComBiometria() {
         if (!dados.sucesso || !usuario || !usuario.id_usuario || !usuario.nome || !usuario.email) {
             throw new Error("A API não retornou os dados do usuário.");
         }
+        await validarAdministrador(usuario.tipo);
         await salvarUsuario(usuario.id_usuario, usuario.nome, usuario.email);
     } catch (erro) {
         if (erro.status === 401 || erro.status === 403 || erro.status === 404) {

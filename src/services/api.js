@@ -1,16 +1,26 @@
 // IP do computador que está executando a API. Celular e computador devem usar a mesma rede.
-export const API_URL = "http://10.92.11.65:5000";
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://10.92.11.14:5000").trim().replace(/\/+$/, "");
 
-export async function requisicaoApi(caminho, opcoes = {}) {
+export async function requisicaoApi(caminho, opcoes = {}, configuracao = {}) {
     const controle = new AbortController();
-    const tempoLimite = setTimeout(() => controle.abort(), 15000);
+    const tempoLimite = setTimeout(() => controle.abort(), configuracao.tempoLimite || 15000);
+    const enviar = configuracao.enviar || fetch;
 
     try {
-        const resposta = await fetch(API_URL + caminho, {
-            ...opcoes,
-            credentials: "omit",
-            signal: controle.signal,
-        });
+        let resposta;
+        try {
+            resposta = await enviar(API_URL + caminho, {
+                ...opcoes,
+                credentials: "omit",
+                signal: controle.signal,
+            });
+        } catch (erro) {
+            if (erro.name === "AbortError") throw erro;
+            if (configuracao.anexo) {
+                throw new Error("Não foi possível enviar o comprovante à API. Selecione o arquivo novamente e confira a conexão. Antes de repetir o cadastro, verifique se a despesa já apareceu em Movimentos.");
+            }
+            throw new Error(`Não foi possível conectar à API em ${API_URL}. Confira o IP do computador da API, se o servidor está ligado e se o celular tem acesso à mesma rede.`);
+        }
 
         let dados;
         try {
@@ -31,9 +41,6 @@ export async function requisicaoApi(caminho, opcoes = {}) {
     } catch (erro) {
         if (erro.name === "AbortError") {
             throw new Error("A API demorou para responder. Tente novamente.");
-        }
-        if (erro instanceof TypeError) {
-            throw new Error("Não foi possível conectar à API. Confira se ela está ligada e se o celular está na mesma rede do computador.");
         }
         throw erro;
     } finally {

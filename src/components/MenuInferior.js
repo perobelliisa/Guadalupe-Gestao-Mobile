@@ -1,11 +1,7 @@
-import { Alert, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import css from "../screens/Home/HomeStyle";
 
 export default function MenuInferior({ navigation, ativo }) {
-    function emBreve() {
-        Alert.alert("Em breve", "Esta tela ainda está em desenvolvimento.");
-    }
-
     return (
         <View style={css.menuInferior}>
             <Pressable accessibilityRole="button" onPress={() => navigation.navigate("Home")} style={css.itemMenu}>
@@ -19,8 +15,8 @@ export default function MenuInferior({ navigation, ativo }) {
             <Pressable accessibilityRole="button" accessibilityLabel="Cadastrar movimentação" onPress={() => navigation.navigate("NovaMovimentacao")} style={css.botaoMais}>
                 <Text style={css.mais}>+</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" onPress={emBreve} style={css.itemMenu}><Text style={css.menuIcone}>▱</Text><Text style={css.menuTexto}>Comprovantes</Text></Pressable>
-            <Pressable accessibilityRole="button" onPress={emBreve} style={css.itemMenu}><Text style={css.menuIcone}>☰</Text><Text style={css.menuTexto}>Mais</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => navigation.navigate("Comprovantes")} style={css.itemMenu}><Text style={ativo === "Comprovantes" ? css.menuAtivo : css.menuIcone}>▱</Text><Text style={ativo === "Comprovantes" ? css.menuTextoAtivo : css.menuTexto}>Comprovantes</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => navigation.navigate("Mais")} style={css.itemMenu}><Text style={ativo === "Mais" ? css.menuAtivo : css.menuIcone}>☰</Text><Text style={ativo === "Mais" ? css.menuTextoAtivo : css.menuTexto}>Mais</Text></Pressable>
         </View>
     );
 }

@@ -82,6 +82,30 @@ consultada novamente. Falhas de conexão são exibidas sem simular um cadastro.
 
 Testes do serviço: `node --test tests/movimentacoes.test.cjs`.
 
+## Comprovantes
+
+A aba **Comprovantes** consulta `GET /livro-caixa` e exibe todas as transações.
+A pesquisa filtra pela descrição ou pelo tipo (entrada/receita ou despesa),
+sem diferenciar maiúsculas e acentos. Transações sem anexo exibem o botão
+**Anexar comprovante**, que permite enviar PDF, JPG ou PNG pela rota
+`POST /livro-caixa/<id>/anexo`. Após a confirmação da API, o cartão e o
+contador de comprovantes enviados são atualizados.
+Toque no arquivo para abri-lo. Puxe a lista para atualizar; ela também é
+consultada ao voltar à tela. Os anexos são enviados no cadastro de movimentações.
+
+Validação: `node --test --test-isolation=none tests/*.test.cjs` e
+`python tests/comprovantes_backend.py` (requer o backend na pasta vizinha).
+
+## Mais / Configurações
+
+A aba **Mais** consulta `GET /minha-conta` e permite editar nome, e-mail,
+perfil de acesso e status. **Salvar alterações** envia os quatro campos
+em formulário para `PUT /minha-conta`, usando o token do login.
+O nome e e-mail locais são atualizados após a confirmação da API.
+Alterar o perfil para financeiro/voluntário ou desativar a conta encerra a
+sessão, pois o app permite acesso a administradores ativos.
+**Sair do aplicativo** limpa os dados de sessão e biometria e volta ao login.
+
 ## Dashboard
 
 A tela inicial consulta o livro-caixa e os projetos pela API. Entradas e despesas

@@ -1,0 +1,25 @@
+import { StyleSheet } from "react-native";
+
+export default StyleSheet.create({
+    pagina: { flex: 1, backgroundColor: "#f6f7fc" },
+    teclado: { flex: 1 },
+    topo: { padding: 16, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    titulo: { color: "#142849", fontSize: 22, fontWeight: "800" },
+    subtitulo: { color: "#8c9bb5", fontSize: 12, marginTop: 5 },
+    logo: { width: 42, height: 48 },
+    conteudo: { padding: 16, paddingBottom: 30 },
+    perfil: { backgroundColor: "#326bff", borderRadius: 20, padding: 18, flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 18 },
+    avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#ffffff26", alignItems: "center", justifyContent: "center" },
+    iniciais: { color: "#fff", fontWeight: "800", fontSize: 15 },
+    identidade: { flex: 1 },
+    nome: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    cargo: { color: "#d9e4ff", fontSize: 12, marginTop: 5 },
+    cartao: { backgroundColor: "#fff", borderRadius: 20, borderWidth: 1, borderColor: "#e3e8f2", padding: 18 },
+    secao: { color: "#142849", fontWeight: "700", fontSize: 18 },
+    descricao: { color: "#8c9bb5", fontSize: 12, marginTop: 6, marginBottom: 22 },
+    aviso: { color: "#637697", fontSize: 12, lineHeight: 18, marginBottom: 8 },
+    erro: { color: "#b53a36", lineHeight: 20, textAlign: "center", marginVertical: 12 },
+    sair: { marginTop: 20, minHeight: 46, borderRadius: 17, borderWidth: 1, borderColor: "#ffc9c9", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+    textoSair: { color: "#ff4545", fontWeight: "700", fontSize: 13 },
+    rodape: { textAlign: "center", color: "#8c9bb5", fontSize: 10, marginTop: 24 },
+});

@@ -5,6 +5,8 @@ import Login from "./src/screens/Login/Login";
 import Home from "./src/screens/Home/Home";
 import Movimentacoes from "./src/screens/Movimentacoes/Movimentacoes";
 import NovaMovimentacao from "./src/screens/Movimentacoes/NovaMovimentacao";
+import Comprovantes from "./src/screens/Comprovantes/Comprovantes";
+import Mais from "./src/screens/Mais/Mais";
 
 const Stack = createNativeStackNavigator();
 
@@ -21,6 +23,8 @@ export default function App() {
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="Movimentacoes" component={Movimentacoes} />
           <Stack.Screen name="NovaMovimentacao" component={NovaMovimentacao} />
+          <Stack.Screen name="Comprovantes" component={Comprovantes} />
+          <Stack.Screen name="Mais" component={Mais} />
         </Stack.Navigator>
       </NavigationContainer>
     </>

@@ -1,5 +1,5 @@
 // IP do computador que está executando a API. Celular e computador devem usar a mesma rede.
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://10.92.11.14:5000").trim().replace(/\/+$/, "");
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://10.92.11.24:5000").trim().replace(/\/+$/, "");
 
 export async function requisicaoApi(caminho, opcoes = {}, configuracao = {}) {
     const controle = new AbortController();

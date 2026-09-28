@@ -49,7 +49,8 @@ export default function Home({ navigation }) {
             }
         }
         carregarUsuario();
-    }, []);
+        return navigation.addListener("focus", carregarUsuario);
+    }, [navigation]);
 
     const lancamentos = dadosFinanceiros?.lancamentos || [];
     const iniciais = nome.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(parte => parte[0]).join("").toUpperCase() || "G";

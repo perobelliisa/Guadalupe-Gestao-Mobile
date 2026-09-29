@@ -113,6 +113,11 @@ export function converterValor(texto) {
         throw new Error("Informe um valor válido, por exemplo: 1.250,50.");
     }
     const numero = Number(valor.replace(/\./g, "").replace(",", "."));
+    // Acima deste limite o JavaScript não preserva todos os centavos.
+    const [inteiro, fracao = ""] = valor.replace(/\./g, "").split(",");
+    if (BigInt(inteiro + fracao.padEnd(2, "0")) > BigInt(Number.MAX_SAFE_INTEGER)) {
+        throw new Error("O valor informado é muito alto. Confira o valor e tente novamente.");
+    }
     if (!Number.isFinite(numero) || numero <= 0) throw new Error("O valor deve ser maior que zero.");
     return numero;
 }

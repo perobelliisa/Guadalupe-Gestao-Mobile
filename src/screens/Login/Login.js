@@ -1,9 +1,11 @@
+import AvisoErro from "../../components/AvisoErro";
 import { Image, KeyboardAvoidingView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState } from "react";
 import Botao from "../../components/Botao";
 import CampoTexto from "../../components/CampoTexto";
 import { realizarLogin, realizarLoginComBiometria } from "../../services/login";
+import { mensagemErro } from "../../services/api";
 import css from "./LoginStyle";
 
 export default function Login({ navigation }) {
@@ -29,7 +31,7 @@ export default function Login({ navigation }) {
             return;
         } catch (erroLogin) {
             setCarregando(false);
-            setErro(erroLogin.message);
+            setErro(mensagemErro(erroLogin, "Não foi possível entrar. Confira e-mail e senha e tente novamente."));
             return;
         }
     }
@@ -45,7 +47,7 @@ export default function Login({ navigation }) {
             return;
         } catch (erroBiometria) {
             setCarregando(false);
-            setErro(erroBiometria.message);
+            setErro(mensagemErro(erroBiometria, "Não foi possível entrar com biometria. Tente novamente ou entre com e-mail e senha."));
             return;
         }
     }
@@ -69,7 +71,7 @@ export default function Login({ navigation }) {
                 <CampoTexto titulo="E-mail" placeholder="seuemail@exemplo.com" value={email} onChangeText={setEmail} keyboardType="email-address" />
                 <CampoTexto titulo="Senha" placeholder="Digite sua senha" value={senha} onChangeText={setSenha} secureTextEntry={true} />
 
-                {erro ? <Text style={css.erro}>{erro}</Text> : null}
+                {erro ? <AvisoErro erro={erro} /> : null}
 
                 <Botao titulo="Entrar" onPress={entrar} carregando={carregando} />
                 <Botao titulo="Entrar com biometria" onPress={entrarComBiometria} carregando={carregando} tipo="secundario" />

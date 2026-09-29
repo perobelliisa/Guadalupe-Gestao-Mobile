@@ -1,3 +1,5 @@
+import AvisoErro from "../../components/AvisoErro";
+import { mensagemErro } from "../../services/api";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,7 +31,7 @@ export default function Mais({ navigation }) {
             setConta(usuario);
             setDados(usuario);
         } catch (falha) {
-            if (atual === consulta.current) setErro(falha.message);
+            if (atual === consulta.current) setErro(mensagemErro(falha));
         } finally {
             if (atual === consulta.current) setCarregando(false);
         }
@@ -70,7 +72,7 @@ export default function Mais({ navigation }) {
                 Alert.alert("Conta atualizada", "Alterações salvas com sucesso.");
             }
         } catch (falha) {
-            setErro(falha.message);
+            setErro(mensagemErro(falha));
         } finally {
             ocupado.current = false;
             setSalvando(false);
@@ -95,7 +97,7 @@ export default function Mais({ navigation }) {
                         {(dados.tipo !== 0 || dados.status !== 0) && <Text style={css.aviso}>Ao salvar, sua sessão será encerrada. O app permite acesso a administradores ativos.</Text>}
                         <Botao titulo="Salvar alterações" onPress={salvar} carregando={salvando} />
                     </View>}
-                    {!!erro && <Text accessibilityRole="alert" style={css.erro}>{erro}</Text>}
+                    {!!erro && <AvisoErro erro={erro} />}
                     {!carregando && !dados && <Botao titulo="Tentar novamente" onPress={carregar} tipo="secundario" />}
                 </View>
                 <Pressable accessibilityRole="button" disabled={salvando} onPress={sair} style={css.sair}><Text style={css.textoSair}>Sair do aplicativo</Text></Pressable>

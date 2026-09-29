@@ -25,6 +25,15 @@ function carregarServico(resposta = {}, token = "token-teste") {
     return { servico: contexto, chamadas };
 }
 
+test("recusa valores excessivos antes de enviar e preserva valores usuais", () => {
+    const { servico } = carregarServico();
+    for (const valor of ["120000000000000000", "90.071.992.547.409,92"]) {
+        assert.throws(() => servico.converterValor(valor), /valor informado é muito alto/);
+    }
+    assert.equal(servico.converterValor("1.250,50"), 1250.5);
+    assert.equal(servico.converterValor("0,01"), 0.01);
+});
+
 test("lista os movimentos retornados pela API com autenticação", async () => {
     const registros = [{ id_livro_caixa: 9, tipo: 0, valor: 1250.50 }];
     const { servico, chamadas } = carregarServico({ movimentacoes: registros });

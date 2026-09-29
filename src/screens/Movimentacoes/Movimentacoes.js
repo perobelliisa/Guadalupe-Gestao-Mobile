@@ -1,3 +1,5 @@
+import AvisoErro from "../../components/AvisoErro";
+import { mensagemErro } from "../../services/api";
 import { ActivityIndicator, FlatList, Image, Pressable, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
@@ -22,7 +24,7 @@ export default function Movimentacoes({ navigation }) {
             setMovimentacoes(lista);
             setProjetos(listaProjetos);
         } catch (erroApi) {
-            setErro(erroApi.message);
+            setErro(mensagemErro(erroApi));
         } finally {
             setCarregando(false);
         }
@@ -99,7 +101,7 @@ export default function Movimentacoes({ navigation }) {
                 contentContainerStyle={css.lista}
                 refreshing={carregando}
                 onRefresh={carregar}
-                ListHeaderComponent={erro ? <View style={css.aviso}><Text style={css.erro}>{erro}</Text><Pressable onPress={carregar}><Text style={css.link}>Tentar novamente</Text></Pressable></View> : null}
+                ListHeaderComponent={erro ? <View style={css.aviso}><AvisoErro erro={erro} /><Pressable onPress={carregar}><Text style={css.link}>Tentar novamente</Text></Pressable></View> : null}
                 ListEmptyComponent={!erro && <View style={css.aviso}>{carregando ? <ActivityIndicator color="#326bff" /> : <Text style={css.textoAviso}>{busca || filtro !== "Todos" ? "Nenhum lançamento encontrado para este filtro." : "Nenhuma movimentação cadastrada. Toque em + para começar."}</Text>}</View>}
             />
             <MenuInferior navigation={navigation} ativo="Movimentacoes" />

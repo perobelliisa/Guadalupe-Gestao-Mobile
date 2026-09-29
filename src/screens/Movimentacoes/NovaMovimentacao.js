@@ -1,3 +1,5 @@
+import AvisoErro from "../../components/AvisoErro";
+import { mensagemErro } from "../../services/api";
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useRef, useState } from "react";
@@ -56,7 +58,7 @@ export default function NovaMovimentacao({ navigation, route }) {
             setProjetos(listaProjetos);
             setOrigens(montarOrigens(movimentos));
         } catch (erroApi) {
-            setErroOpcoes(erroApi.message);
+            setErroOpcoes(mensagemErro(erroApi));
         } finally {
             setCarregando(false);
         }
@@ -71,7 +73,7 @@ export default function NovaMovimentacao({ navigation, route }) {
                 setAnexo(normalizarAnexo(resultado.assets[0]));
             }
         } catch (erroArquivo) {
-            Alert.alert("Anexo", erroArquivo.message);
+            Alert.alert("Anexo", mensagemErro(erroArquivo));
         }
     }
 
@@ -82,7 +84,7 @@ export default function NovaMovimentacao({ navigation, route }) {
         try {
             lancamento = montarLancamento(tipo, { descricao, valor, data, categoria, novaCategoria, conta, formaPagamento, origem, novaOrigem, fornecedor, observacao, status, recorrencia, inicio, fim });
         } catch (erroValidacao) {
-            setErro(erroValidacao.message);
+            setErro(mensagemErro(erroValidacao));
             return;
         }
 
@@ -93,7 +95,7 @@ export default function NovaMovimentacao({ navigation, route }) {
             Alert.alert("Sucesso", tipo === 0 ? "Receita cadastrada!" : "Despesa cadastrada!");
             navigation.popTo("Movimentacoes");
         } catch (erroApi) {
-            setErro(erroApi.message);
+            setErro(mensagemErro(erroApi));
         } finally {
             enviando.current = false;
             setSalvando(false);
@@ -110,7 +112,7 @@ export default function NovaMovimentacao({ navigation, route }) {
             <KeyboardAvoidingView style={css.teclado} behavior={Platform.OS === "ios" ? "padding" : "height"}>
                 <ScrollView contentContainerStyle={css.formulario} keyboardShouldPersistTaps="handled">
                     {carregando ? <ActivityIndicator color="#326bff" /> : erroOpcoes ? (
-                        <View style={css.aviso}><Text style={css.erro}>{erroOpcoes}</Text><Botao titulo="Tentar novamente" onPress={carregarOpcoes} /></View>
+                        <View style={css.aviso}><AvisoErro erro={erroOpcoes} /><Botao titulo="Tentar novamente" onPress={carregarOpcoes} /></View>
                     ) : (
                         <View style={css.campos} pointerEvents={salvando ? "none" : "auto"}>
                             <View style={css.abas}>
@@ -157,7 +159,7 @@ export default function NovaMovimentacao({ navigation, route }) {
                             </View>
                             <Text style={css.secao}>Observações</Text>
                             <CampoTexto compacto multiline titulo="Observação" placeholder="Informações adicionais (opcional)" value={observacao} onChangeText={setObservacao} maxLength={200} />
-                            {erro ? <Text accessibilityRole="alert" style={css.erro}>{erro}</Text> : null}
+                            {erro ? <AvisoErro erro={erro} /> : null}
                             <View style={css.rodape}><Pressable accessibilityRole="button" disabled={salvando} onPress={salvar} style={[css.salvar, salvando && css.desabilitado]}>{salvando ? <ActivityIndicator color="#ffffff" /> : <Text style={css.textoSalvar}>{tipo === 0 ? "Salvar receita" : "Salvar despesa"}</Text>}</Pressable></View>
                         </View>
                     )}

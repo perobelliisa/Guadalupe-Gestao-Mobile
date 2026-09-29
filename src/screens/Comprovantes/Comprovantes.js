@@ -1,3 +1,5 @@
+import AvisoErro from "../../components/AvisoErro";
+import { mensagemErro } from "../../services/api";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Image, Linking, Pressable, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,7 +31,7 @@ export default function Comprovantes({ navigation }) {
             setProjetos(contas);
             setConsultado(true);
         } catch (falha) {
-            if (atual === consulta.current) setErro(falha.message);
+            if (atual === consulta.current) setErro(mensagemErro(falha));
         } finally {
             if (atual === consulta.current) setCarregando(false);
         }
@@ -59,7 +61,7 @@ export default function Comprovantes({ navigation }) {
             setMovimentos(registros => registros.map(registro =>
                 registro.id_livro_caixa === item.id_livro_caixa ? { ...registro, anexo } : registro));
         } catch (falha) {
-            Alert.alert("Não foi possível anexar", falha.message);
+            Alert.alert("Não foi possível anexar", mensagemErro(falha));
         } finally {
             ocupado.current = false;
             setEnviando(null);
@@ -104,7 +106,7 @@ export default function Comprovantes({ navigation }) {
                     <View style={css.resumo}>
                         <View style={[css.contador, css.enviado]}><View style={[css.icone, css.iconeEnviado]}><Text style={[css.simbolo, css.verde]}>✓</Text></View><Text style={css.numero}>{consultado ? comprovados : "—"}</Text><Text style={css.legenda}>Comprovantes enviados</Text></View>
                     </View>
-                    {!!erro && <View style={css.aviso}><Text style={css.erro}>{erro}</Text>{consultado && <Text style={css.textoAviso}>Exibindo a última consulta.</Text>}<Pressable accessibilityRole="button" onPress={carregar}><Text style={css.textoBotao}>Tentar novamente</Text></Pressable></View>}
+                    {!!erro && <View style={css.aviso}><AvisoErro erro={erro} />{consultado && <Text style={css.textoAviso}>Exibindo a última consulta.</Text>}<Pressable accessibilityRole="button" onPress={carregar}><Text style={css.textoBotao}>Tentar novamente</Text></Pressable></View>}
                 </>}
                 ListEmptyComponent={!erro && <View style={css.aviso}>{carregando ? <ActivityIndicator color="#326bff" /> : <Text style={css.textoAviso}>{termo ? "Nenhuma transação encontrada para esta pesquisa." : "Nenhuma transação cadastrada."}</Text>}</View>}
                 renderItem={({ item }) => <View style={css.cartao}>

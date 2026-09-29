@@ -1,3 +1,5 @@
+import AvisoErro from "../../components/AvisoErro";
+import { mensagemErro } from "../../services/api";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,7 +24,7 @@ export default function Home({ navigation }) {
             const dados = await carregarDashboard();
             if (numero === requisicaoAtual.current) setDadosFinanceiros(dados);
         } catch (erroApi) {
-            if (numero === requisicaoAtual.current) setErro(erroApi.message);
+            if (numero === requisicaoAtual.current) setErro(mensagemErro(erroApi));
         } finally {
             if (numero === requisicaoAtual.current) setCarregando(false);
         }
@@ -105,7 +107,7 @@ export default function Home({ navigation }) {
                 </View>
 
                 <View style={css.conteudo}>
-                    {erro ? <View style={css.avisoErro}><Text style={css.erro}>{erro}</Text>{dadosFinanceiros && <Text style={css.semLancamentosTexto}>Exibindo os dados da última consulta.</Text>}<Pressable onPress={atualizar}><Text style={css.verTodos}>Tentar novamente</Text></Pressable></View> : null}
+                    {erro ? <View style={css.avisoErro}><AvisoErro erro={erro} />{dadosFinanceiros && <Text style={css.semLancamentosTexto}>Exibindo os dados da última consulta.</Text>}<Pressable onPress={atualizar}><Text style={css.verTodos}>Tentar novamente</Text></Pressable></View> : null}
                     <View style={css.linhaTitulo}><Text style={css.tituloSecao}>Acesso rápido</Text><Text style={css.periodo}>Todos os períodos</Text></View>
                     <View style={css.acessos}>
                         <Pressable onPress={() => navigation.navigate("NovaMovimentacao", { tipo: 0 })} style={css.acesso}><View style={[css.iconeAcesso, css.fundoVerde]}><Text style={css.verde}>↙</Text></View><Text style={css.textoAcesso}>Receita</Text></Pressable>

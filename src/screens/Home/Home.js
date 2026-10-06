@@ -7,6 +7,7 @@ import { getUsuario, limparDados } from "../../services/usuarioStorage";
 import css from "./HomeStyle";
 import MenuInferior from "../../components/MenuInferior";
 import { carregarDashboard } from "../../services/dashboard";
+import Notificacoes from "../../components/Notificacoes";
 
 export default function Home({ navigation }) {
     const [nome, setNome] = useState("");
@@ -15,7 +16,6 @@ export default function Home({ navigation }) {
     const [erro, setErro] = useState("");
     const [mostrarValores, setMostrarValores] = useState(true);
     const requisicaoAtual = useRef(0);
-
     async function atualizar() {
         const numero = ++requisicaoAtual.current;
         setCarregando(true);
@@ -87,7 +87,10 @@ export default function Home({ navigation }) {
                     <View style={css.avatar}><Text style={css.avatarTexto}>{iniciais}</Text></View>
                     <View style={css.identidade}><Text style={css.saudacao}>{saudacao}</Text><Text numberOfLines={1} style={css.nomeUsuario}>{nome || "Boas-vindas"}</Text></View>
                 </View>
-                <Pressable onPress={sair} style={css.botaoSair}><Text style={css.textoSair}>Sair</Text></Pressable>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Notificacoes navigation={navigation} onPagamento={atualizar} />
+                    <Pressable onPress={sair} style={css.botaoSair}><Text style={css.textoSair}>Sair</Text></Pressable>
+                </View>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={carregando} onRefresh={atualizar} tintColor="#ffffff" colors={["#2f6bff"]} />}>

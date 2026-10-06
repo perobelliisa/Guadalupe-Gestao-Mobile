@@ -2,9 +2,10 @@ import AvisoErro from "../../components/AvisoErro";
 import { mensagemErro } from "../../services/api";
 import { ActivityIndicator, FlatList, Image, Pressable, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MenuInferior from "../../components/MenuInferior";
 import { listarMovimentacoes, listarProjetos } from "../../services/movimentacoes";
+import EditorMovimentacao from "../../components/EditorMovimentacao";
 import css from "./MovimentacoesStyle";
 
 export default function Movimentacoes({ navigation }) {
@@ -16,24 +17,27 @@ export default function Movimentacoes({ navigation }) {
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState("");
 
+    const [selecionada, setSelecionada] = useState(null);
+    const consulta = useRef(0);
+
     async function carregar() {
+        const numero = ++consulta.current;
         setCarregando(true);
         setErro("");
         try {
             const [lista, listaProjetos] = await Promise.all([listarMovimentacoes(), listarProjetos()]);
-            setMovimentacoes(lista);
-            setProjetos(listaProjetos);
+            if (numero === consulta.current) { setMovimentacoes(lista); setProjetos(listaProjetos); }
         } catch (erroApi) {
-            setErro(mensagemErro(erroApi));
+            if (numero === consulta.current) setErro(mensagemErro(erroApi));
         } finally {
-            setCarregando(false);
+            if (numero === consulta.current) setCarregando(false);
         }
     }
 
     useEffect(() => {
         if (navigation.isFocused()) carregar();
         const remover = navigation.addListener("focus", carregar);
-        return remover;
+        return () => { remover(); consulta.current++; };
     }, [navigation]);
 
     function nomeProjeto(conta) {
@@ -61,19 +65,21 @@ export default function Movimentacoes({ navigation }) {
     function renderizar({ item, index }) {
         const receita = Number(item.tipo) === 0;
         return (
-            <View style={[css.linha, index === 0 && css.primeiraLinha, index === lista.length - 1 && css.ultimaLinha]}>
-                <View style={[css.icone, receita ? css.fundoReceita : css.fundoDespesa]}>
-                    <Text style={[css.seta, receita ? css.receita : css.despesa]}>{receita ? "↙" : "↗"}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Editar ${item.descricao}`} onPress={() => setSelecionada(item)} style={[css.cartao, index === 0 && css.primeiraLinha, index === lista.length - 1 && css.ultimaLinha]}>
+                <View style={css.linha}>
+                    <View style={[css.icone, receita ? css.fundoReceita : css.fundoDespesa]}>
+                        <Text style={[css.seta, receita ? css.receita : css.despesa]}>{receita ? "↙" : "↗"}</Text>
+                    </View>
+                    <View style={css.descricao}>
+                        <Text style={css.nome} numberOfLines={2}>{item.descricao}</Text>
+                        <Text style={css.detalhe} numberOfLines={1}>{item.categoria || "Sem categoria"} · {nomeProjeto(item.conta)}</Text>
+                    </View>
+                    <View style={css.valores}>
+                        <Text style={[css.valor, receita && css.receita]}>{receita ? "+ " : "− "}{Number(item.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Text>
+                        <Text style={css.detalhe}>{mostrarData(item.data)}</Text>
+                    </View>
                 </View>
-                <View style={css.descricao}>
-                    <Text style={css.nome} numberOfLines={2}>{item.descricao}</Text>
-                    <Text style={css.detalhe} numberOfLines={1}>{item.categoria || "Sem categoria"} · {nomeProjeto(item.conta)}</Text>
-                </View>
-                <View style={css.valores}>
-                    <Text style={[css.valor, receita && css.receita]}>{receita ? "+ " : "− "}{Number(item.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Text>
-                    <Text style={css.detalhe}>{mostrarData(item.data)}</Text>
-                </View>
-            </View>
+            </Pressable>
         );
     }
 
@@ -94,6 +100,7 @@ export default function Movimentacoes({ navigation }) {
                     <Pressable accessibilityRole="button" accessibilityLabel={recentes ? "Mostrar mais antigos primeiro" : "Mostrar mais recentes primeiro"} onPress={() => setRecentes(!recentes)} style={[css.filtro, css.ordenar]}><Text style={css.textoFiltro}>{recentes ? "↓" : "↑"}</Text></Pressable>
                 </View>
             </View>
+            {filtro === "Despesas" && <Pressable accessibilityRole="button" onPress={() => navigation.navigate("NovaMovimentacao", { tipo: 1, tirarFoto: true })} style={{ marginHorizontal: 16, marginTop: 12, padding: 14, minHeight: 44, borderRadius: 12, backgroundColor: "#326bff", alignItems: "center" }}><Text style={{ color: "white", fontWeight: "700" }}>Cadastrar despesa pela foto</Text></Pressable>}
             <FlatList
                 data={lista}
                 keyExtractor={item => String(item.id_livro_caixa)}
@@ -105,6 +112,7 @@ export default function Movimentacoes({ navigation }) {
                 ListEmptyComponent={!erro && <View style={css.aviso}>{carregando ? <ActivityIndicator color="#326bff" /> : <Text style={css.textoAviso}>{busca || filtro !== "Todos" ? "Nenhum lançamento encontrado para este filtro." : "Nenhuma movimentação cadastrada. Toque em + para começar."}</Text>}</View>}
             />
             <MenuInferior navigation={navigation} ativo="Movimentacoes" />
+            {selecionada && <EditorMovimentacao item={selecionada} onFechar={() => setSelecionada(null)} onSalvar={() => { setSelecionada(null); carregar(); }} />}
         </SafeAreaView>
     );
 }

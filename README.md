@@ -118,3 +118,60 @@ O botão de olho oculta os valores, e **Ver todos** abre Movimentações.
 Em caso de erro, a tela informa quando estiver mostrando a última consulta.
 
 Testes da dashboard: `node --test tests/dashboard.test.cjs`.
+
+
+## Notificações de despesas
+
+O sininho ao lado de Sair abre uma lista de despesas vencidas ou com vencimento
+nos próximos 13 dias, seguindo as faixas Alta e Média do web. Mostra um contador,
+a descrição, a data e mensagens como vence hoje, amanhã ou em determinada
+quantidade de dias. Contas pagas saem da lista na próxima consulta à API.
+
+A lista consulta GET /pendencias com o token do usuário, ao entrar ou voltar à
+Home, retornar ao app, abrir o painel e a cada minuto enquanto o app está ativo.
+O painel tem atualização manual e informa falhas sem apagar a última consulta.
+São avisos dentro do aplicativo, sem solicitar permissão de notificações do celular.
+
+
+## Editar e pagar no mobile
+
+Toque na linha em Movimentos para abrir o pop-up de edição, como no web.
+Os campos são preenchidos com os dados atuais da API. Salvar alterações usa
+PUT /livro-caixa/<id>; o tipo fica fixo e o comprovante existente é mantido.
+Cancelar fecha o editor sem gravar. Gerencie arquivos na aba Comprovantes.
+
+Dentro do editor de despesa, Marcar como pago abre uma confirmação com
+descrição, valor e vencimento, Cancelar e Confirmar pagamento. Salve edições
+pendentes antes de usar o pagamento. Despesas simples recebem status Pago.
+Nas recorrentes, apenas a ocorrência exibida é quitada pela mesma rota do web,
+POST /pendencias/despesa/<id>/pagar; as futuras continuam em aberto.
+O sininho usa a mesma janela de confirmação para o vencimento selecionado.
+
+Após sucesso da API, o editor fecha e a lista é atualizada. Falhas aparecem
+na janela, sem fechar nem confirmar pagamento. Envios simultâneos são bloqueados.
+
+### Despesa a partir do comprovante
+
+Na aba Despesa do cadastro, use **Tirar foto do comprovante**. Os dados
+reconhecidos preenchem o formulário para revisão. Na lista de Movimentações,
+o filtro Despesas também oferece **Cadastrar despesa pela foto**, que abre
+o cadastro e inicia a câmera. Categoria e origem são preenchidas pelo usuário; somente Salvar
+cadastra a despesa e envia o comprovante. Valores ambíguos ficam vazios.
+
+A API envia a foto ao Gemini para extrair os dados. O aplicativo não recebe
+a chave. A resposta é validada antes de preencher o formulário, e a despesa
+só é cadastrada ao tocar em Salvar.
+
+No projeto `GuadalupeGestao-Back`, abra `gemini.local.json`, informe sua chave
+no campo `api_key` e reinicie a API. Esse arquivo é ignorado pelo Git.
+Também é possível configurar `GEMINI_API_KEY` e `GEMINI_MODEL` como variáveis
+de ambiente do servidor. Modelo padrão: `gemini-3.8-flash`. A integração usa
+a API REST do Gemini e Pillow, sem depender do leitor do Windows.
+
+Crie a chave no [Google AI Studio](https://aistudio.google.com/apikey).
+A chave precisa de acesso ao modelo configurado e de cota disponível.
+Não coloque a chave no aplicativo nem em variáveis `EXPO_PUBLIC_*`.
+PDF continua disponível para anexar, mas a leitura aceita fotos JPG/PNG.
+
+Verificação: `python tests/leitura_comprovante_backend.py` valida o contrato
+com o Gemini com respostas simuladas, sem usar uma chave ou acessar o banco.

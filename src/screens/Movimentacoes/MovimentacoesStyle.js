@@ -17,6 +17,7 @@ export default StyleSheet.create({
     textoAtivo: { color: "#ffffff" },
     ordenar: { marginLeft: "auto", paddingHorizontal: 10 },
     lista: { paddingHorizontal: 20, paddingBottom: 28 },
+    cartao: { backgroundColor: "#ffffff", borderBottomWidth: 1, borderColor: "#e6eaf3", overflow: "hidden" },
     linha: { flexDirection: "row", alignItems: "center", backgroundColor: "#ffffff", padding: 15, minHeight: 82, borderBottomWidth: 1, borderColor: "#e6eaf3", gap: 10 },
     primeiraLinha: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderTopWidth: 1 },
     ultimaLinha: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },

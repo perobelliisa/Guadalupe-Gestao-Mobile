@@ -21,6 +21,13 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Permita que o Guadalupe Gestão use a câmera para fotografar comprovantes.",
+          "microphonePermission": false
+        }
       ]
     ],
     "ios": {

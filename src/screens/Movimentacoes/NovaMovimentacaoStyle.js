@@ -1,6 +1,17 @@
 import { StyleSheet } from "react-native";
 
 export default StyleSheet.create({
+    topoEdicao: { paddingVertical: 10, paddingHorizontal: 18, minHeight: 76 },
+    subtituloEdicao: { color: "#77859c", fontSize: 11, marginTop: 6 },
+    valorEdicao: { backgroundColor: "white", borderWidth: 1, borderColor: "#dbe4f3", borderRadius: 8, padding: 12, marginBottom: 16 },
+    inputValorEdicao: { fontSize: 18, fontWeight: "600", color: "#172747", minHeight: 32 },
+    rodapeEdicao: { padding: 16, gap: 12, borderTopWidth: 1, borderColor: "#e0e5ee", backgroundColor: "white" },
+    botoesEdicao: { flexDirection: "row", gap: 10 },
+    cancelarEdicao: { flex: 1, minHeight: 46, borderWidth: 1, borderColor: "#dbe4f3", borderRadius: 8, alignItems: "center", justifyContent: "center" },
+    textoCancelarEdicao: { color: "#172747", fontSize: 13, fontWeight: "700" },
+    salvarEdicao: { flex: 1, minHeight: 46, backgroundColor: "#326bff", borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
+    marcarPago: { minHeight: 44, borderWidth: 1, borderColor: "#ee9700", borderRadius: 8, alignItems: "center", justifyContent: "center" },
+    textoMarcarPago: { color: "#172747", fontSize: 13, fontWeight: "700" },
     pagina: { flex: 1, backgroundColor: "#ffffff" },
     topo: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, minHeight: 60, borderBottomWidth: 1, borderColor: "#edf0f7" },
     voltar: { width: 42, height: 44, justifyContent: "center", alignItems: "center" },

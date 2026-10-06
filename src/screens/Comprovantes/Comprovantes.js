@@ -3,7 +3,7 @@ import { mensagemErro } from "../../services/api";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Image, Linking, Pressable, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as DocumentPicker from "expo-document-picker";
+import { selecionarComprovante } from "../../services/selecionarComprovante";
 import MenuInferior from "../../components/MenuInferior";
 import { listarMovimentacoes, listarProjetos } from "../../services/movimentacoes";
 import { enviarComprovante, temComprovante, urlComprovante } from "../../services/comprovantes";
@@ -43,18 +43,14 @@ export default function Comprovantes({ navigation }) {
         return () => { remover(); consulta.current += 1; };
     }, [navigation]);
 
-    async function anexar(item) {
+    async function anexar(item, origem) {
         if (ocupado.current) return;
         ocupado.current = true;
         setEnviando(item.id_livro_caixa);
         try {
-            const resultado = await DocumentPicker.getDocumentAsync({
-                type: ["application/pdf", "image/jpeg", "image/png"],
-                multiple: false,
-                copyToCacheDirectory: true,
-            });
-            if (resultado.canceled) return;
-            const anexo = await enviarComprovante(item.id_livro_caixa, resultado.assets[0]);
+            const arquivo = await selecionarComprovante(origem);
+            if (!arquivo) return;
+            const anexo = await enviarComprovante(item.id_livro_caixa, arquivo, temComprovante(item));
             // Evita que uma consulta anterior ao envio apague o anexo confirmado.
             consulta.current += 1;
             setCarregando(false);
@@ -69,7 +65,7 @@ export default function Comprovantes({ navigation }) {
     }
 
     async function abrir(item) {
-        try { await Linking.openURL(urlComprovante(item.anexo)); }
+        try { await Linking.openURL(urlComprovante(item.anexo) + "?v=" + Date.now()); }
         catch { Alert.alert("Não foi possível abrir", "Confira a conexão e se há um aplicativo para abrir este comprovante."); }
     }
 
@@ -115,11 +111,14 @@ export default function Comprovantes({ navigation }) {
                         <View style={css.descricao}><Text style={css.nome}>{item.descricao}</Text><Text style={css.detalhe}>{Number(item.tipo) === 0 ? "Entrada" : "Despesa"} · {detalhe(item)}</Text></View>
                         <Text style={css.valor}>{Number(item.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Text>
                     </View>
-                    {temComprovante(item) ? <Pressable accessibilityRole="button" accessibilityLabel={`Abrir comprovante de ${item.descricao}`} style={css.arquivo} onPress={() => abrir(item)}><Text style={css.textoBotao}>↗</Text><Text style={css.nomeArquivo} numberOfLines={1}>{item.anexo.split("/").pop()}</Text><Text style={css.status}>Enviado</Text></Pressable>
-                        : <Pressable accessibilityRole="button" accessibilityLabel={`Anexar comprovante de ${item.descricao}`} accessibilityState={{ disabled: enviando !== null, busy: enviando === item.id_livro_caixa }} disabled={enviando !== null} onPress={() => anexar(item)} style={[css.botaoAnexar, enviando !== null && css.desabilitado]}>
-                            {enviando === item.id_livro_caixa && <ActivityIndicator size="small" color="#326bff" />}
-                            <Text style={css.textoBotao}>{enviando === item.id_livro_caixa ? "Anexando..." : "Anexar comprovante"}</Text>
-                        </Pressable>}
+                    {temComprovante(item) && <Pressable accessibilityRole="button" accessibilityLabel={`Abrir comprovante de ${item.descricao}`} style={css.arquivo} onPress={() => abrir(item)}><Text style={css.textoBotao}>↗</Text><Text style={css.nomeArquivo} numberOfLines={1}>{item.anexo.split("/").pop()}</Text><Text style={css.status}>Enviado</Text></Pressable>
+                    }
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                        {[{ origem: "arquivo", nome: temComprovante(item) ? "Trocar arquivo" : "Anexar arquivo" }, { origem: "camera", nome: "Tirar foto" }].map(acao => <Pressable key={acao.origem} accessibilityRole="button" accessibilityLabel={`${acao.nome}: ${item.descricao}`} disabled={enviando !== null} onPress={() => anexar(item, acao.origem)} style={[css.botaoAnexar, { flex: 1 }, enviando !== null && css.desabilitado]}>
+                            <Text style={css.textoBotao}>{acao.nome}</Text>
+                        </Pressable>)}
+                    </View>
+                    {enviando === item.id_livro_caixa && <ActivityIndicator style={{ marginTop: 10 }} color="#326bff" />}
                 </View>}
             />
             <MenuInferior navigation={navigation} ativo="Comprovantes" />

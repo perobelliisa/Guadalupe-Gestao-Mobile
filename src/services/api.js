@@ -1,5 +1,5 @@
 // IP do computador que está executando a API. Celular e computador devem usar a mesma rede.
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL || " http://10.92.11.38:5000").trim().replace(/\/+$/, "");
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://10.92.11.35:5000").trim().replace(/\/+$/, "");
 
 function extrairMensagem(valor, profundidade = 0) {
     if (typeof valor === "string") {

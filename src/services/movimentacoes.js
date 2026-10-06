@@ -1,3 +1,5 @@
+import { fetch as fetchExpo } from "expo/fetch";
+import { adicionarAnexo } from "./uploadAnexo";
 import { requisicaoApi } from "./api";
 import { getToken } from "./usuarioStorage";
 
@@ -30,8 +32,7 @@ export async function cadastrarMovimentacao(tipo, lancamento, anexo = null) {
     const headers = await cabecalho();
     let body = JSON.stringify(lancamento);
     if (anexo) {
-        // O DocumentPicker já copia o documento para o cache do aplicativo.
-        // O fetch nativo do React Native aceita esse URI no multipart.
+        // O seletor copia o comprovante para o cache do aplicativo.
         if (!anexo.file && (typeof anexo.uri !== "string" || !/^(file|content):\/\//.test(anexo.uri))) {
             throw new Error("O comprovante selecionado não tem um endereço válido. Selecione o arquivo novamente.");
         }
@@ -39,8 +40,7 @@ export async function cadastrarMovimentacao(tipo, lancamento, anexo = null) {
         for (const [campo, valor] of Object.entries(lancamento)) {
             if (valor !== null && valor !== undefined) body.append(campo, String(valor));
         }
-        if (anexo.file) body.append("anexo", anexo.file, anexo.name);
-        else body.append("anexo", { uri: anexo.uri, name: anexo.name, type: anexo.mimeType });
+        adicionarAnexo(body, anexo);
         // O fetch define o boundary do formulário com arquivo.
         delete headers["Content-Type"];
     }
@@ -48,7 +48,7 @@ export async function cadastrarMovimentacao(tipo, lancamento, anexo = null) {
         method: "POST",
         headers,
         body,
-    }, anexo ? { tempoLimite: 60000, anexo: true } : {});
+    }, anexo ? { tempoLimite: 60000, anexo: true, enviar: fetchExpo } : {});
 }
 
 export const RECORRENCIAS = [
@@ -133,4 +133,87 @@ export function converterData(texto, permitirFutura = false) {
     hoje.setHours(23, 59, 59, 999);
     if (!permitirFutura && data > hoje) throw new Error("A data da movimentação não pode ser futura.");
     return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
+// A edição usa a mesma rota do EditorMovimentacao do web.
+export async function editarMovimentacao(id, lancamento) {
+    if (!Number.isInteger(Number(id)) || Number(id) <= 0) throw new Error("Selecione um lançamento válido.");
+    const dados = await requisicaoApi(`/livro-caixa/${id}`, {
+        method: "PUT",
+        headers: await cabecalho(),
+        body: JSON.stringify(lancamento),
+    });
+    if (!dados.sucesso) throw new Error("Não foi possível confirmar a alteração. Atualize a lista.");
+    return dados;
+}
+
+export async function pagarVencimento(id, vencimento) {
+    if (!Number.isInteger(Number(id)) || Number(id) <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(vencimento || "")) {
+        throw new Error("Selecione uma despesa e um vencimento válidos.");
+    }
+    const dados = await requisicaoApi(`/pendencias/despesa/${id}/pagar`, {
+        method: "POST",
+        headers: await cabecalho(),
+        body: JSON.stringify({ vencimento }),
+    });
+    if (!dados.sucesso) throw new Error("Não foi possível confirmar o pagamento. Atualize a lista.");
+    return dados;
+}
+
+export async function marcarDespesaPaga(id, pagamentoEsperado = null) {
+    // Reconsulta antes de pagar para usar os dados atuais do servidor.
+    const movimentos = await listarMovimentacoes();
+    const despesa = movimentos.find(item => Number(item.id_livro_caixa) === Number(id));
+    if (!despesa || Number(despesa.tipo) !== 1) throw new Error("Selecione uma despesa válida.");
+    if (Number(despesa.recorrencia)) {
+        throw new Error("Selecione o vencimento da recorrência para pagar.");
+    }
+    if (Number(despesa.status) === 1) throw new Error("Esta despesa já foi paga. Atualize a lista.");
+    if (pagamentoEsperado && (Number(despesa.valor) !== Number(pagamentoEsperado.valor)
+        || despesa.descricao !== pagamentoEsperado.descricao
+        || (despesa.vencimento || null) !== (pagamentoEsperado.vencimento || null))) {
+        throw new Error("Esta despesa foi alterada. Atualize os dados antes de confirmar o pagamento.");
+    }
+    // PUT exige o registro completo; preserva os campos que não foram alterados.
+    return await editarMovimentacao(id, { ...despesa, status: 1 });
+}
+
+export function camposDaMovimentacao(item) {
+    const data = valor => valor ? valor.slice(0, 10).split("-").reverse().join("/") : "";
+    return {
+        descricao: item.descricao || "",
+        valor: Number(item.valor).toFixed(2).replace(".", ","),
+        data: data(item.dia || item.data),
+        categoria: Number(item.id_categoria || 0),
+        conta: Number(item.conta || 0),
+        formaPagamento: item.forma_pagamento == null ? null : Number(item.forma_pagamento),
+        fornecedor: item.fornecedor || "",
+        origem: item.origem || "",
+        recorrencia: Number(item.recorrencia || 0),
+        inicio: data(item.dia_inicio),
+        fim: data(item.dia_fim),
+        status: Number(item.status || 0),
+        observacao: item.observacao || "",
+    };
+}
+
+export async function buscarVencimentoDespesa(id) {
+    const dados = await requisicaoApi("/pendencias", { headers: await cabecalho() });
+    if (!Array.isArray(dados.pendencias)) throw new Error("Não foi possível consultar os vencimentos.");
+    const pendencia = dados.pendencias.find(item => item.tipo === "despesa" && Number(item.id) === Number(id));
+    if (!pendencia) throw new Error("Esta despesa não tem vencimentos em aberto. Atualize a lista.");
+    return pendencia;
+}
+
+// Dados salvos que serão exibidos antes da confirmação do pagamento.
+export async function prepararPagamentoDespesa(id) {
+    const movimentos = await listarMovimentacoes();
+    const despesa = movimentos.find(item => Number(item.id_livro_caixa) === Number(id));
+    if (!despesa || Number(despesa.tipo) !== 1) throw new Error("Selecione uma despesa válida.");
+    if (Number(despesa.recorrencia)) {
+        const pendencia = await buscarVencimentoDespesa(id);
+        return { ...pendencia, recorrente: true };
+    }
+    if (Number(despesa.status) === 1) throw new Error("Esta despesa já foi paga. Atualize a lista.");
+    return { id: despesa.id_livro_caixa, descricao: despesa.descricao, valor: despesa.valor, vencimento: despesa.vencimento, recorrente: false };
 }

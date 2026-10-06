@@ -8,6 +8,8 @@ const path = require("node:path");
 function carregarServico(resposta = {}, token = "token-teste") {
     const chamadas = [];
     const contexto = vm.createContext({
+        File: class { constructor(uri) { this.uri = uri; } async bytes() { return new TextEncoder().encode(this.uri); } },
+        fetchExpo: async () => {},
         FormData: class {
             constructor() { this.campos = []; }
             append(nome, valor) { this.campos.push([nome, valor]); }
@@ -18,6 +20,7 @@ function carregarServico(resposta = {}, token = "token-teste") {
             return resposta;
         },
     });
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/services/uploadAnexo.js"), "utf8").replace(/^import .*;\r?\n/gm, "").replace(/^export /gm, ""), contexto);
     const codigo = fs.readFileSync(path.join(__dirname, "../src/services/movimentacoes.js"), "utf8")
         .replace(/^import .*;\r?\n/gm, "")
         .replace(/^export /gm, "");
@@ -146,8 +149,8 @@ test("anexo é enviado em multipart com autenticação sem fixar Content-Type", 
     assert.equal(opcoes.headers["Content-Type"], undefined);
     assert.equal(opcoes.headers.Authorization, "Bearer token-teste");
     assert.equal(opcoes.body.campos.find(item => item[0] === "status")[1], "0");
-    assert.equal(opcoes.body.campos.find(item => item[0] === "anexo")[1].uri, "file:///comprovante.pdf");
-    assert.equal(chamadas[0].configuracao.enviar, undefined);
+    assert.equal(new TextDecoder().decode(await opcoes.body.campos.find(item => item[0] === "anexo")[1].bytes()), "file:///comprovante.pdf");
+    assert.equal(chamadas[0].configuracao.enviar, servico.fetchExpo);
     assert.equal(chamadas[0].configuracao.tempoLimite, 60000);
 });
 
@@ -157,13 +160,124 @@ test("anexo sem URI válido é identificado antes de enviar ou cadastrar", async
     assert.equal(chamadas.length, 0);
 });
 
-test("JPG do seletor mantém URI, nome e tipo sem depender de File.exists", async () => {
+test("JPG do seletor envia bytes, nome e tipo sem depender de File.exists", async () => {
     for (const uri of ["file:///cache/DocumentPicker/foto.jpg", "content://documents/foto/123"]) {
         const { servico, chamadas } = carregarServico({ sucesso: true });
         await servico.cadastrarMovimentacao(1, { valor: 10 }, { uri, name: "foto.jpg", mimeType: "image/jpeg" });
         const arquivo = chamadas[0].opcoes.body.campos.find(item => item[0] === "anexo")[1];
-        assert.equal(arquivo.uri, uri);
+        assert.equal(new TextDecoder().decode(await arquivo.bytes()), uri);
         assert.equal(arquivo.name, "foto.jpg");
         assert.equal(arquivo.type, "image/jpeg");
+    }
+});
+
+
+test("edita na mesma rota do web com PUT, token e campos completos", async () => {
+    const { servico, chamadas } = carregarServico({ sucesso: true });
+    const dados = { descricao: "Conta", valor: 12.5, dia: "2026-01-02", conta: 0, forma_pagamento: 0, status: 1, recorrencia: 0 };
+    await servico.editarMovimentacao(9, dados);
+    assert.equal(chamadas[0].rota, "/livro-caixa/9");
+    assert.equal(chamadas[0].opcoes.method, "PUT");
+    assert.equal(chamadas[0].opcoes.headers.Authorization, "Bearer token-teste");
+    assert.deepEqual(JSON.parse(chamadas[0].opcoes.body), dados);
+    await assert.rejects(servico.editarMovimentacao(0, dados), /Selecione/);
+});
+
+test("preenche editor sem perder centavos, codigos zero e datas de recorrencia", () => {
+    const { servico } = carregarServico();
+    const campos = servico.camposDaMovimentacao({ valor: 1250.5, dia: "2026-01-02", id_categoria: "7", conta: 0, forma_pagamento: 0, status: 1, recorrencia: 4, dia_inicio: "2026-01-02", dia_fim: "2026-02-02", origem: "Caixa" });
+    assert.equal(campos.valor, "1250,50");
+    assert.equal(campos.data, "02/01/2026");
+    assert.equal(campos.inicio, "02/01/2026");
+    assert.equal(campos.fim, "02/02/2026");
+    assert.equal(campos.categoria, 7);
+    assert.equal(campos.formaPagamento, 0);
+    assert.equal(campos.conta, 0);
+    assert.equal(campos.status, 1);
+    const dados = servico.montarLancamento(1, { ...campos, descricao: "Conta", novaCategoria: "", novaOrigem: "" });
+    assert.equal(dados.valor, 1250.5);
+    assert.equal(dados.dia_inicio, "2026-01-02");
+});
+
+test("pagamento recorrente envia somente a data da ocorrencia escolhida", async () => {
+    const { servico, chamadas } = carregarServico({ sucesso: true });
+    await servico.pagarVencimento(7, "2026-10-08");
+    assert.equal(chamadas[0].rota, "/pendencias/despesa/7/pagar");
+    assert.equal(chamadas[0].opcoes.method, "POST");
+    assert.deepEqual(JSON.parse(chamadas[0].opcoes.body), { vencimento: "2026-10-08" });
+    await assert.rejects(servico.pagarVencimento(7, null), /vencimento/);
+    await assert.rejects(servico.pagarVencimento(-1, "2026-10-08"), /vencimento/);
+    assert.equal(chamadas.length, 1);
+});
+
+test("marca despesa simples como paga preservando todos os dados atuais", async () => {
+    const item = { id_livro_caixa: 9, tipo: 1, descricao: "Conta", status: 0, recorrencia: 0, valor: 100, id_categoria: 4, conta: 0, forma_pagamento: 0, origem: "Caixa", dia: "2026-01-02", vencimento: "2026-01-03", anexo: "arquivo.pdf" };
+    const { servico, chamadas } = carregarServico();
+    servico.requisicaoApi = async (rota, opcoes) => {
+        chamadas.push({ rota, opcoes });
+        return rota === "/livro-caixa" ? { movimentacoes: [item] } : { sucesso: true };
+    };
+    await servico.marcarDespesaPaga(9);
+    assert.equal(chamadas[1].rota, "/livro-caixa/9");
+    assert.deepEqual(JSON.parse(chamadas[1].opcoes.body), { ...item, status: 1 });
+    assert.equal(item.status, 0);
+});
+
+test("nao altera receita, despesa paga ou recorrencia pelo fluxo de pagamento simples", async () => {
+    for (const item of [{ tipo: 0, status: 0 }, { tipo: 1, status: 1 }, { tipo: 1, status: 0, recorrencia: 4 }]) {
+        const { servico, chamadas } = carregarServico({ movimentacoes: [{ ...item, id_livro_caixa: 7 }] });
+        await assert.rejects(servico.marcarDespesaPaga(7));
+        assert.equal(chamadas.length, 1);
+        assert.equal(chamadas[0].opcoes.method, undefined);
+    }
+});
+
+test("busca o proximo vencimento por tipo e id e rejeita resposta incompleta", async () => {
+    const despesa = { tipo: "despesa", id: 7, vencimento: "2026-10-08" };
+    const { servico } = carregarServico({ pendencias: [{ tipo: "emprestimo", id: 7 }, despesa] });
+    assert.equal(await servico.buscarVencimentoDespesa(7), despesa);
+    await assert.rejects(servico.buscarVencimentoDespesa(8), /vencimentos em aberto/);
+    const invalido = carregarServico({ sucesso: true });
+    await assert.rejects(invalido.servico.buscarVencimentoDespesa(7), /consultar/);
+});
+
+test("exige confirmacao de sucesso e preserva erros de conflito do servidor", async () => {
+    const { servico } = carregarServico({});
+    await assert.rejects(servico.editarMovimentacao(7, {}), /confirmar/);
+    await assert.rejects(servico.pagarVencimento(7, "2026-10-08"), /confirmar/);
+    servico.requisicaoApi = async () => { const erro = new Error("Esta ocorrencia ja foi paga"); erro.status = 409; throw erro; };
+    await assert.rejects(servico.pagarVencimento(7, "2026-10-08"), erro => erro.status === 409);
+});
+
+
+test("confirmacao usa valor e data salvos e nao confunde o status inicial da recorrencia", async () => {
+    const item = { id_livro_caixa: 7, tipo: 1, status: 0, recorrencia: 0, descricao: "Conta", valor: 150, vencimento: "2026-10-08" };
+    const { servico } = carregarServico({ movimentacoes: [item] });
+    const pagamento = await servico.prepararPagamentoDespesa(7);
+    assert.equal(pagamento.valor, 150);
+    assert.equal(pagamento.vencimento, "2026-10-08");
+    assert.equal(pagamento.recorrente, false);
+    item.recorrencia = 4;
+    item.status = 1;
+    servico.requisicaoApi = async rota => rota === "/livro-caixa"
+        ? { movimentacoes: [item] }
+        : { pendencias: [{ tipo: "despesa", id: 7, valor: 150, descricao: "Conta", vencimento: "2026-11-08" }] };
+    const recorrente = await servico.prepararPagamentoDespesa(7);
+    assert.equal(recorrente.vencimento, "2026-11-08");
+    assert.equal(recorrente.recorrente, true);
+});
+
+test("nao confirma valor alterado depois de abrir a janela", async () => {
+    const item = { id_livro_caixa: 7, tipo: 1, status: 0, recorrencia: 0, descricao: "Conta", valor: 200, vencimento: "2026-10-08" };
+    const { servico, chamadas } = carregarServico({ movimentacoes: [item] });
+    await assert.rejects(servico.marcarDespesaPaga(7, { descricao: "Conta", valor: 150, vencimento: "2026-10-08" }), /foi alterada/);
+    assert.equal(chamadas.length, 1);
+    assert.equal(chamadas[0].opcoes.method, undefined);
+});
+
+test("nao abre confirmacao para receita ou despesa ja paga", async () => {
+    for (const item of [{ tipo: 0, status: 0 }, { tipo: 1, status: 1, recorrencia: 0 }]) {
+        const { servico } = carregarServico({ movimentacoes: [{ ...item, id_livro_caixa: 7 }] });
+        await assert.rejects(servico.prepararPagamentoDespesa(7));
     }
 });

@@ -65,6 +65,21 @@ class LeituraTest(unittest.TestCase):
         with patch.object(leitura,'urlopen',return_value=resposta):
             self.assertEqual(leitura.consultar_gemini(b'foto','chave','gemini-3.8-flash')['dia'],'2026-10-06')
 
+    def test_resposta_real_em_passos_model_output(self):
+        import json
+        resposta={'status':'completed','steps':[{'type':'thought','content':[{'type':'text','text':'ignorar'}]}, {'type':'model_output','content':[{'type':'text','text':json.dumps(self.dados())}]}]}
+        with patch.object(leitura,'urlopen',return_value=io.BytesIO(json.dumps(resposta).encode())):
+            dados=leitura.consultar_gemini(b'foto','chave','gemini-3.5-flash-lite')
+        self.assertEqual(dados['valor'],'150.00')
+        self.assertEqual(dados['fornecedor'],'Mercado')
+
+    def test_resposta_incompleta_nao_preenche(self):
+        import json
+        resposta={'status':'failed','output_text':json.dumps(self.dados())}
+        with patch.object(leitura,'urlopen',return_value=io.BytesIO(json.dumps(resposta).encode())):
+            with self.assertRaises(leitura.ErroLeitura):
+                leitura.consultar_gemini(b'foto','chave','gemini-3.5-flash-lite')
+
     def test_resposta_vazia_invalida_ou_bloqueada(self):
         for resposta in [b'{}',b'nao json',b'{"output_text":"texto livre"}']:
             with patch.object(leitura,'urlopen',return_value=io.BytesIO(resposta)):

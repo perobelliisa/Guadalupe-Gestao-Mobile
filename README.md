@@ -165,7 +165,7 @@ só é cadastrada ao tocar em Salvar.
 No projeto `GuadalupeGestao-Back`, abra `gemini.local.json`, informe sua chave
 no campo `api_key` e reinicie a API. Esse arquivo é ignorado pelo Git.
 Também é possível configurar `GEMINI_API_KEY` e `GEMINI_MODEL` como variáveis
-de ambiente do servidor. Modelo padrão: `gemini-3.8-flash`. A integração usa
+de ambiente do servidor. Modelo padrão: `gemini-3.5-flash-lite`. A integração usa
 a API REST do Gemini e Pillow, sem depender do leitor do Windows.
 
 Crie a chave no [Google AI Studio](https://aistudio.google.com/apikey).

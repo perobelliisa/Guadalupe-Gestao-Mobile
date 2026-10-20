@@ -8,7 +8,7 @@ import CampoTexto from "../../components/CampoTexto";
 import Seletor from "../../components/Seletor";
 import CampoData from "../../components/CampoData";
 import { selecionarComprovante } from "../../services/selecionarComprovante";
-import { lerComprovante } from "../../services/lerComprovante";
+import { lerComprovante, selecionarOpcoesComprovante } from "../../services/lerComprovante";
 import { enviarComprovante } from "../../services/comprovantes";
 import { cadastrarMovimentacao, editarMovimentacao, camposDaMovimentacao, listarCategorias, listarProjetos, listarMovimentacoes, montarLancamento, montarOrigens, RECORRENCIAS, prepararPagamentoDespesa, pagarVencimento, marcarDespesaPaga } from "../../services/movimentacoes";
 import ConfirmarPagamento from "../../components/ConfirmarPagamento";
@@ -48,7 +48,7 @@ export default function NovaMovimentacao({ navigation, route, onFechar, onSalvar
     const [selecionandoAnexo, setSelecionandoAnexo] = useState(false);
     const [lendoFoto, setLendoFoto] = useState(false);
     const cameraInicialAberta = useRef(false);
-    const [status, setStatus] = useState(0);
+    const [status, setStatus] = useState(rascunho?.status === 1 ? 1 : 0);
     const [observacao, setObservacao] = useState("");
     const [categorias, setCategorias] = useState([]);
     const [projetos, setProjetos] = useState([]);
@@ -154,7 +154,7 @@ export default function NovaMovimentacao({ navigation, route, onFechar, onSalvar
         try {
             const foto = await selecionarComprovante("camera", true);
             if (!foto) return;
-            const dados = await lerComprovante(foto);
+            const dados = await lerComprovante(foto, categorias, origens);
             if (dados.descricao) setDescricao(dados.descricao);
             if (dados.valor) setValor(dados.valor);
             if (dados.data) setData(dados.data);
@@ -169,6 +169,20 @@ export default function NovaMovimentacao({ navigation, route, onFechar, onSalvar
             setLendoFoto(false);
         }
     }
+
+    useEffect(() => {
+        if (!rascunho || carregando || erroOpcoes || editando || tipo !== 1) return;
+        const campos = selecionarOpcoesComprovante(rascunho, categorias, origens);
+        setStatus(rascunho.status === 1 ? 1 : 0);
+        if (campos.categoria !== undefined) {
+            setCategoria(campos.categoria);
+            setNovaCategoria(campos.novaCategoria);
+        }
+        if (campos.origem !== undefined) {
+            setOrigem(campos.origem);
+            setNovaOrigem(campos.novaOrigem);
+        }
+    }, [rascunho, carregando, erroOpcoes, editando, tipo, categorias, origens]);
 
     useEffect(() => {
         if (route.params?.tirarFoto && !carregando && !erroOpcoes && !cameraInicialAberta.current) {
@@ -233,9 +247,9 @@ export default function NovaMovimentacao({ navigation, route, onFechar, onSalvar
         }
     }
 
-    const opcoesCategorias = [...categorias.filter(item => Number(item.tipo) === tipo).map(item => ({ valor: Number(item.id_categoria), nome: item.nome })), { valor: "__nova__", nome: "+ Criar nova categoria" }];
+    const opcoesCategorias = [...categorias.filter(item => Number(item.tipo) === tipo).map(item => ({ valor: Number(item.id_categoria), nome: item.nome })), { valor: "__nova__", nome: novaCategoria.trim() ? `Nova: ${novaCategoria.trim()}` : "+ Criar nova categoria" }];
     const opcoesProjetos = [{ valor: 0, nome: "Missão Guadalupe" }, ...projetos.map(item => ({ valor: Number(item.id_projeto), nome: item.nome }))];
-    const opcoesOrigens = [...origens.map(nome => ({ valor: nome, nome })), { valor: "__nova__", nome: "+ Informar nova origem" }];
+    const opcoesOrigens = [...origens.map(nome => ({ valor: nome, nome })), { valor: "__nova__", nome: novaOrigem.trim() ? `Nova: ${novaOrigem.trim()}` : "+ Informar nova origem" }];
 
     return (
         <Container style={css.pagina}>
@@ -249,7 +263,8 @@ export default function NovaMovimentacao({ navigation, route, onFechar, onSalvar
                         <View style={css.aviso}><AvisoErro erro={erroOpcoes} /><Botao titulo="Tentar novamente" onPress={carregarOpcoes} /></View>
                     ) : (
                         <View style={css.campos} pointerEvents={ocupado ? "none" : "auto"}>
-                            {tipo === 1 && rascunho && <View style={css.anexo}><Text style={css.nomeAnexo}>Confira os dados lidos do comprovante</Text><Text style={css.ajuda}>Corrija o que for necessário e escolha a categoria e a origem. A despesa será cadastrada ao salvar.</Text></View>}
+                            {tipo === 1 && rascunho && <View style={css.anexo}><Text style={css.nomeAnexo}>Confira os dados lidos do comprovante</Text><Text style={css.ajuda}>Confira a categoria e a origem sugeridas e complete os campos vazios. Novas opções e a despesa serão cadastradas ao salvar.</Text></View>}
+                            {tipo === 1 && rascunho?.leituraDesatualizada && <AvisoErro erro="O serviço de leitura está desatualizado. Reinicie o backend Python e tire a foto novamente para preencher categoria, origem e status." />}
                             {!onFechar && <View style={css.abas}>
                                 {["Receita", "Despesa"].map((nome, indice) => <Pressable key={nome} disabled={salvando || editando} accessibilityRole="tab" accessibilityState={{ selected: tipo === indice }} onPress={() => { if (tipo !== indice) { setTipo(indice); setCategoria(0); setRascunho(null); setErro(""); } }} style={[css.aba, tipo === indice && css.abaAtiva]}><Text style={[css.textoAba, tipo === indice && (indice === 0 ? css.verde : css.vermelho)]}>{indice === 0 ? "↙  " : "↗  "}{nome}</Text></Pressable>)}
                             </View>}
@@ -270,10 +285,12 @@ export default function NovaMovimentacao({ navigation, route, onFechar, onSalvar
                             {categoria !== "__nova__" && <Pressable accessibilityRole="button" disabled={salvando} style={css.criarCategoria} onPress={() => setCategoria("__nova__")}><Text style={css.link}>+ Criar nova categoria</Text></Pressable>}
                             {categoria === "__nova__" && <CampoTexto compacto titulo="Nova categoria *" placeholder={tipo === 0 ? "Ex.: doação, oferta ou evento" : "Ex.: alimentação, material ou transporte"} value={novaCategoria} onChangeText={setNovaCategoria} maxLength={100} />}
                             <Text style={css.ajuda}>Escolha uma categoria cadastrada ou crie uma nova para usar nos próximos lançamentos.</Text>
+                            {tipo === 1 && rascunho && !rascunho.categoria && <Text style={css.ajuda}>A foto não permitiu identificar o tipo de despesa. Escolha a categoria ou crie uma nova.</Text>}
                             {tipo === 0 && <Seletor compacto titulo="Projeto ou missão em geral *" opcoes={opcoesProjetos} valor={conta} onChange={setConta} desabilitado={salvando} />}
                             <Text style={css.secao}>{tipo === 0 ? "Origem e recebimento" : "Pagamento"}</Text>
                             <Seletor compacto titulo={tipo === 0 ? "Fonte do recurso *" : "De onde veio o pagamento? *"} opcoes={opcoesOrigens} valor={origem} onChange={setOrigem} desabilitado={salvando} />
                             {origem === "__nova__" && <CampoTexto compacto titulo="Nova origem *" placeholder={tipo === 0 ? "Ex.: doador, empresa parceira ou evento" : "Ex.: caixa, banco ou transferência"} value={novaOrigem} onChangeText={setNovaOrigem} maxLength={150} />}
+                            {tipo === 1 && rascunho && !rascunho.origem && <Text style={css.ajuda}>A foto não identifica de qual conta saiu o dinheiro. Selecione a conta ou o banco usado para pagar. Débito é a forma de pagamento.</Text>}
                             {tipo === 1 && <>
                                 <CampoTexto compacto titulo="Fornecedor" placeholder="Nome ou instituição" value={fornecedor} onChangeText={setFornecedor} maxLength={100} />
                                 <Seletor compacto titulo="Projeto ou casa de missão *" opcoes={opcoesProjetos} valor={conta} onChange={setConta} desabilitado={salvando} />
@@ -281,6 +298,7 @@ export default function NovaMovimentacao({ navigation, route, onFechar, onSalvar
                             <Seletor compacto titulo={tipo === 0 ? "Meio de recebimento *" : "Forma de pagamento *"} opcoes={formasPagamento} valor={formaPagamento} onChange={setFormaPagamento} desabilitado={salvando} />
                             {tipo === 1 && <>
                                 <Seletor compacto titulo={onFechar && recorrencia ? "Status do primeiro vencimento" : "Status"} opcoes={[{ valor: 0, nome: "Não pago" }, { valor: 1, nome: "Pago" }]} valor={status} onChange={novo => { if (onFechar && novo === 1 && status !== 1) abrirPagamento(); else setStatus(novo); }} desabilitado={ocupado} />
+                                {rascunho && rascunho.status == null && <Text style={css.ajuda}>A foto não confirma a conclusão do pagamento. Confira o status antes de salvar.</Text>}
                                 <View style={css.recorrencia}>
                                 <Text style={css.secao}>Recorrência</Text>
                                 <Seletor compacto titulo="Recorrência" opcoes={RECORRENCIAS} valor={recorrencia} onChange={setRecorrencia} desabilitado={salvando} />

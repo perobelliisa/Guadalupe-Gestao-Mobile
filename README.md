@@ -155,8 +155,15 @@ na janela, sem fechar nem confirmar pagamento. Envios simultâneos são bloquead
 Na aba Despesa do cadastro, use **Tirar foto do comprovante**. Os dados
 reconhecidos preenchem o formulário para revisão. Na lista de Movimentações,
 o filtro Despesas também oferece **Cadastrar despesa pela foto**, que abre
-o cadastro e inicia a câmera. Categoria e origem são preenchidas pelo usuário; somente Salvar
-cadastra a despesa e envia o comprovante. Valores ambíguos ficam vazios.
+o cadastro e inicia a câmera. A leitura sugere categoria e origem usando as opções
+cadastradas como referência. Opções existentes são selecionadas; sugestões novas
+preenchem os campos de cadastro e só são gravadas ao salvar a despesa. A origem
+precisa estar explícita na foto (por exemplo, o banco do pagador); dados ambíguos
+ficam vazios para preenchimento manual. Somente Salvar cadastra a despesa e envia o comprovante.
+Em débito, a leitura considera o banco emissor ou cartão identificado como origem,
+e sugere Pago quando houver confirmação de aprovação ou autorização da venda.
+Sem confirmação, o status permanece Não pago para revisão. O app avisa quando a
+resposta vier de um backend antigo, que precisa ser reiniciado após a atualização.
 
 A API envia a foto ao Gemini para extrair os dados. O aplicativo não recebe
 a chave. A resposta é validada antes de preencher o formulário, e a despesa
@@ -175,3 +182,23 @@ PDF continua disponível para anexar, mas a leitura aceita fotos JPG/PNG.
 
 Verificação: `python tests/leitura_comprovante_backend.py` valida o contrato
 com o Gemini com respostas simuladas, sem usar uma chave ou acessar o banco.
+
+### Chat da Lupe
+
+No início, toque em **Converse com a Lupe**, ou abra **Mais → Lupe**.
+A assistente conversa em português e orienta sobre os recursos do aplicativo.
+A tela inclui sugestões de perguntas, indicação de resposta em andamento e
+nova conversa. Se o envio falhar, a mensagem volta ao campo para tentar novamente.
+
+O aplicativo envia `POST /lupe/chat` com autenticação e as últimas dez trocas
+da conversa (até 40 mil caracteres de contexto). Cada mensagem do usuário aceita
+até 2.000 caracteres. A conversa fica na memória da tela e não é salva no celular
+nem no banco. Voltar ou iniciar nova conversa limpa esse contexto.
+
+O módulo `lupe.py` do backend usa a mesma chave e modelo configurados para o
+Gemini. `LUPE_MODEL` permite escolher outro modelo apenas para o chat. Reinicie
+o backend depois de registrar a nova rota em `main.py`. A Lupe recebe somente
+as mensagens enviadas no chat; não consulta dados financeiros nem altera registros.
+
+Verificação: `node --test tests/lupe.test.cjs` e `python -B tests/lupe_backend.py`.
+Os testes usam respostas simuladas e não acessam a IA nem o banco.

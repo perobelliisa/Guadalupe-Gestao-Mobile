@@ -86,6 +86,7 @@ export default function Mais({ navigation }) {
         <View style={css.topo}><View><Text style={css.titulo}>Mais</Text><Text style={css.subtitulo}>Configurações da conta</Text></View><Image source={require("../../../assets/logo.png")} style={css.logo} resizeMode="contain" /></View>
         <KeyboardAvoidingView style={css.teclado} behavior={Platform.OS === "ios" ? "padding" : undefined}>
             <ScrollView contentContainerStyle={css.conteudo} keyboardShouldPersistTaps="handled">
+                <Pressable accessibilityRole="button" accessibilityLabel="Conversar com a Lupe" onPress={() => navigation.navigate("Lupe")} style={[css.cartao, { marginBottom: 18 }]}><Text style={css.secao}>Lupe ✦</Text><Text style={[css.descricao, { marginBottom: 0 }]}>Converse com sua assistente de IA →</Text></Pressable>
                 {conta && <View style={css.perfil}><View style={css.avatar}><Text style={css.iniciais}>{iniciais}</Text></View><View style={css.identidade}><Text style={css.nome}>{conta.nome}</Text><Text style={css.cargo}>{PERFIS.find(item => item.valor === conta.tipo)?.nome}</Text></View></View>}
                 <View style={css.cartao}>
                     <Text style={css.secao}>Dados da conta</Text><Text style={css.descricao}>Gerencie os dados da sua conta.</Text>

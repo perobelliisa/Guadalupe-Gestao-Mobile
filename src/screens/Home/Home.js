@@ -110,6 +110,11 @@ export default function Home({ navigation }) {
                 </View>
 
                 <View style={css.conteudo}>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Conversar com a Lupe, assistente de IA" onPress={() => navigation.navigate("Lupe")} style={css.cartaoLupe}>
+                        <View style={css.avatarLupe}><Text style={css.letraLupe}>L</Text></View>
+                        <View style={{ flex: 1 }}><Text style={css.tituloLupe}>Converse com a Lupe</Text><Text style={css.descricaoLupe}>Sua assistente para o dia a dia no app</Text></View>
+                        <Text style={css.setaLupe}>↗</Text>
+                    </Pressable>
                     {erro ? <View style={css.avisoErro}><AvisoErro erro={erro} />{dadosFinanceiros && <Text style={css.semLancamentosTexto}>Exibindo os dados da última consulta.</Text>}<Pressable onPress={atualizar}><Text style={css.verTodos}>Tentar novamente</Text></Pressable></View> : null}
                     <View style={css.linhaTitulo}><Text style={css.tituloSecao}>Acesso rápido</Text><Text style={css.periodo}>Todos os períodos</Text></View>
                     <View style={css.acessos}>

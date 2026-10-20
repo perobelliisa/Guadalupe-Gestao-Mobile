@@ -62,6 +62,12 @@ const css = StyleSheet.create({
     projetoLancamento: { color: "#8c9bb5", fontSize: 10, marginTop: 5 },
     valorLancamento: { alignItems: "flex-end", maxWidth: "40%" },
     numeroLancamento: { color: "#142849", fontSize: 11, fontWeight: "800" },
+    cartaoLupe: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, backgroundColor: "#eaf0ff", borderWidth: 1, borderColor: "#d7e3ff", borderRadius: 18, marginBottom: 22 },
+    avatarLupe: { width: 42, height: 42, borderRadius: 15, backgroundColor: "#326bff", alignItems: "center", justifyContent: "center" },
+    letraLupe: { color: "#fff", fontSize: 25, fontWeight: "800" },
+    tituloLupe: { color: "#142849", fontSize: 15, fontWeight: "700" },
+    descricaoLupe: { color: "#637697", fontSize: 12, marginTop: 5 },
+    setaLupe: { color: "#326bff", fontSize: 22 },
     avisoErro: { backgroundColor: "#fff0ee", borderRadius: 14, padding: 16, marginBottom: 20, gap: 8 },
     erro: { color: "#b53a36", fontSize: 13, lineHeight: 19 },
 });

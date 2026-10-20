@@ -7,6 +7,7 @@ import Movimentacoes from "./src/screens/Movimentacoes/Movimentacoes";
 import NovaMovimentacao from "./src/screens/Movimentacoes/NovaMovimentacao";
 import Comprovantes from "./src/screens/Comprovantes/Comprovantes";
 import Mais from "./src/screens/Mais/Mais";
+import Lupe from "./src/screens/Lupe/Lupe";
 
 const Stack = createNativeStackNavigator();
 
@@ -25,6 +26,7 @@ export default function App() {
           <Stack.Screen name="NovaMovimentacao" component={NovaMovimentacao} />
           <Stack.Screen name="Comprovantes" component={Comprovantes} />
           <Stack.Screen name="Mais" component={Mais} />
+          <Stack.Screen name="Lupe" component={Lupe} />
         </Stack.Navigator>
       </NavigationContainer>
     </>

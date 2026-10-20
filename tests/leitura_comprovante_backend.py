@@ -18,17 +18,55 @@ class LeituraTest(unittest.TestCase):
     def dados(self, **mudancas):
         return dict(comprovante_legivel=True, descricao='Compra no mercado', fornecedor='Mercado',valor='150.00',dia='2026-10-06',forma_pagamento=0, **mudancas)
 
-    def test_valida_dados_sem_presumir_categoria_pagamento(self):
+    def test_valida_status_sem_aceitar_id_categoria_do_modelo(self):
         dados=leitura.validar_dados({**self.dados(), 'status':1,'id_categoria':4})
         self.assertEqual(dados['valor'],'150.00')
         self.assertEqual(dados['forma_pagamento'],0)
-        self.assertNotIn('status',dados)
+        self.assertEqual(dados['status'], 1)
         self.assertNotIn('id_categoria',dados)
 
     def test_dados_invalidos_ficam_vazios(self):
         dados=leitura.validar_dados({**self.dados(), 'valor':'-50.00','dia':'2026-02-31','forma_pagamento':True,'fornecedor':{}})
         self.assertIsNone(dados['valor']); self.assertIsNone(dados['dia'])
         self.assertIsNone(dados['forma_pagamento']); self.assertEqual(dados['fornecedor'],'')
+
+    def test_sugestoes_de_categoria_e_origem_validadas(self):
+        dados = leitura.validar_dados(self.dados(categoria=' Transporte ', origem=' Caixa '))
+        self.assertEqual(dados['categoria'], 'Transporte')
+        self.assertEqual(dados['origem'], 'Caixa')
+        dados = leitura.validar_dados(self.dados(categoria={}, origem=None))
+        self.assertEqual(dados['categoria'], '')
+        self.assertEqual(dados['origem'], '')
+
+    def test_status_debito_aprovado_e_status_ausente(self):
+        for status in (0, 1):
+            self.assertEqual(leitura.validar_dados(self.dados(status=status))['status'], status)
+        for status in (True, '1', 2, None):
+            self.assertIsNone(leitura.validar_dados(self.dados(status=status))['status'])
+
+    def test_debito_aprovado_retorna_categoria_origem_e_status(self):
+        entrada = {**self.dados(), 'forma_pagamento': 2, 'status': 1, 'categoria': 'Alimentacao', 'origem': 'Banco Local'}
+        with patch.object(leitura, 'urlopen', return_value=self.resposta(entrada)):
+            dados = leitura.consultar_gemini(b'foto', 'chave', 'gemini-3.5-flash-lite')
+        self.assertEqual(dados['forma_pagamento'], 2)
+        self.assertEqual(dados['status'], 1)
+        self.assertEqual(dados['categoria'], 'Alimentacao')
+        self.assertEqual(dados['origem'], 'Banco Local')
+
+    def test_opcoes_como_referencia_sem_alterar_instrucoes(self):
+        import json
+        opcoes = {'categorias': ['Alimentacao'], 'origens': ['Banco Local']}
+        with patch.object(leitura, 'urlopen', return_value=self.resposta(self.dados(categoria='Alimentacao', origem='Banco Local'))) as enviar:
+            dados = leitura.consultar_gemini(b'foto', 'chave', 'gemini-3.5-flash-lite', opcoes)
+        corpo = json.loads(enviar.call_args.args[0].data)
+        self.assertEqual(corpo['system_instruction'], leitura.INSTRUCOES)
+        self.assertIn('Banco Local', corpo['input'][0]['text'])
+        self.assertEqual(dados['origem'], 'Banco Local')
+        self.assertIn('categoria', corpo['response_format']['schema']['properties'])
+        with patch.object(leitura, 'urlopen') as enviar:
+            with self.assertRaises(ValueError):
+                leitura.consultar_gemini(b'foto', 'chave', 'gemini-3.5-flash-lite', {'categorias': 'invalido'})
+            enviar.assert_not_called()
 
     def test_comprovante_ilegivel_nao_preenche(self):
         with self.assertRaises(ValueError):
@@ -124,7 +162,7 @@ class RotaTest(unittest.TestCase):
         funcao=next(no for no in arvore.body if isinstance(no,ast.FunctionDef) and no.name=='ler_dados_comprovante')
         funcao.decorator_list=[]
         self.motor=types.SimpleNamespace(ler_comprovante=Mock(return_value={'valor':'150.00'}))
-        self.env=dict(jsonify=lambda dados:dados, usuario_pode_gerenciar_doacoes=Mock(return_value=True),request=types.SimpleNamespace(files={'anexo':'foto'}), app=Mock())
+        self.env=dict(jsonify=lambda dados:dados, usuario_pode_gerenciar_doacoes=Mock(return_value=True),request=types.SimpleNamespace(files={'anexo':'foto'}, form={}), app=Mock())
         exec(compile(ast.Module(body=[funcao],type_ignores=[]),'rota','exec'),self.env)
 
     def executar(self):
@@ -141,6 +179,17 @@ class RotaTest(unittest.TestCase):
         self.assertEqual(status,200)
         self.assertEqual(dados['dados']['valor'],'150.00')
         self.assertTrue(dados['sucesso'])
+
+    def test_encaminha_opcoes_para_leitura(self):
+        self.env['request'].form = {'opcoes': '{"categorias":["Transporte"],"origens":["Caixa"]}'}
+        self.assertEqual(self.executar()[1], 200)
+        self.motor.ler_comprovante.assert_called_once_with('foto', {'categorias': ['Transporte'], 'origens': ['Caixa']})
+
+    def test_opcoes_invalidas_nao_enviam_foto(self):
+        for texto in ['invalido', '[1,2]', 'x' * 200001]:
+            self.env['request'].form = {'opcoes': texto}
+            self.assertEqual(self.executar()[1], 400)
+        self.motor.ler_comprovante.assert_not_called()
 
     def test_falhas_de_imagem_e_motor(self):
         for erro,status in [(ValueError('foto invalida'),400),(RuntimeError('motor indisponivel'),503),(Exception('falha'),500)]:

@@ -1,6 +1,6 @@
 import AvisoErro from "../../components/AvisoErro";
 import { mensagemErro } from "../../services/api";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getUsuario, limparDados } from "../../services/usuarioStorage";
@@ -111,7 +111,7 @@ export default function Home({ navigation }) {
 
                 <View style={css.conteudo}>
                     <Pressable accessibilityRole="button" accessibilityLabel="Conversar com a Lupe, assistente de IA" onPress={() => navigation.navigate("Lupe")} style={css.cartaoLupe}>
-                        <View style={css.avatarLupe}><Text style={css.letraLupe}>L</Text></View>
+                        <Image source={require("../../../assets/Lupe.png")} style={css.avatarLupe} resizeMode="contain" />
                         <View style={{ flex: 1 }}><Text style={css.tituloLupe}>Converse com a Lupe</Text><Text style={css.descricaoLupe}>Sua assistente para o dia a dia no app</Text></View>
                         <Text style={css.setaLupe}>↗</Text>
                     </Pressable>

@@ -3,10 +3,11 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 
-function carregar({ token = "token", resposta = { resposta: "Oi! Eu sou a Lupe." }, erro } = {}) {
+function carregar({ token = "token", resposta = { resposta: "Oi! Eu sou a Lupe." }, erro, usuario = { id: 7 } } = {}) {
     const chamadas = [];
     const contexto = vm.createContext({
         getToken: async () => token,
+        getUsuario: async () => usuario,
         requisicaoApi: async (...args) => { chamadas.push(args); if (erro) throw erro; return resposta; },
     });
     vm.runInContext(fs.readFileSync("src/services/lupe.js", "utf8").replace(/^import .*;\r?\n/gm, "").replace(/^export /gm, ""), contexto);
@@ -19,7 +20,7 @@ test("envia conversa autenticada e retorna resposta da Lupe", async () => {
     const [rota, opcoes, configuracao] = chamadas[0];
     assert.equal(rota, "/lupe/chat");
     assert.equal(opcoes.headers.Authorization, "Bearer token");
-    assert.equal(configuracao.tempoLimite, 60000);
+    assert.equal(configuracao.tempoLimite, 120000);
     assert.deepEqual(JSON.parse(opcoes.body), { mensagens: [{ papel: "usuario", texto: "Oi!" }] });
 });
 
@@ -58,4 +59,34 @@ test("nao aceita resposta vazia e explica servidor sem chat", async () => {
     await assert.rejects(carregar({ erro: { status: 404 } }).contexto.conversarComLupe("Oi"), /Reinicie/);
     const erro = new Error("Sem conexão");
     await assert.rejects(carregar({ erro }).contexto.conversarComLupe("Oi"), falha => falha === erro);
+});
+
+test("chat com comandos envia conversa e retorna proposta sem confirmar", async () => {
+    const proposta = { id: "acao-1", estado: "preparada" };
+    const { contexto, chamadas } = carregar({ resposta: { resposta: "Confira a proposta.", acoes: [proposta] } });
+    const resultado = await contexto.conversarComLupe("Cadastre uma despesa", [], "conversa-1");
+    assert.equal(JSON.parse(chamadas[0][1].body).conversa_id, "conversa-1");
+    assert.equal(resultado.acoes[0].id, "acao-1");
+    assert.equal(chamadas.length, 1);
+    assert.equal(chamadas[0][0], "/lupe/chat");
+});
+
+test("confirmacao e cancelamento usam endpoint proprio e conta autenticada", async () => {
+    const { contexto, chamadas } = carregar({ resposta: { sucesso: true, acao: { id: "acao-1", estado: "concluida" } } });
+    await contexto.decidirAcaoLupe("acao-1", true, 7);
+    assert.equal(chamadas[0][0], "/lupe/acoes/acao-1/confirmar");
+    assert.deepEqual(JSON.parse(chamadas[0][1].body), { confirmar: true });
+    assert.equal(chamadas[0][1].headers["X-Lupe-Usuario"], "7");
+    await contexto.decidirAcaoLupe("acao-1", false, 7);
+    assert.equal(chamadas[1][0], "/lupe/acoes/acao-1/cancelar");
+    assert.deepEqual(JSON.parse(chamadas[1][1].body), {});
+    await assert.rejects(contexto.decidirAcaoLupe("acao-1", true, 8), /Entre novamente/);
+    assert.equal(chamadas.length, 2);
+});
+
+test("acoes pendentes sao consultadas por conversa sem realizar alteracoes", async () => {
+    const { contexto, chamadas } = carregar({ resposta: { acoes: [{ id: "acao-1" }] } });
+    assert.equal((await contexto.listarAcoesLupe("conversa-1", 7)).length, 1);
+    assert.equal(chamadas[0][0], "/lupe/acoes?conversa_id=conversa-1");
+    assert.equal(chamadas[0][1].method, undefined);
 });

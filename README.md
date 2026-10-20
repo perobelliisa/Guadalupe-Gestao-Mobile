@@ -192,13 +192,85 @@ nova conversa. Se o envio falhar, a mensagem volta ao campo para tentar novament
 
 O aplicativo envia `POST /lupe/chat` com autenticação e as últimas dez trocas
 da conversa (até 40 mil caracteres de contexto). Cada mensagem do usuário aceita
-até 2.000 caracteres. A conversa fica na memória da tela e não é salva no celular
-nem no banco. Voltar ou iniciar nova conversa limpa esse contexto.
+até 2.000 caracteres. Após cada resposta, a conversa é salva no backend,
+separada pela conta autenticada. O botão **Histórico** lista
+título, prévia, data da última atualização e quantidade de mensagens; permite
+reabrir, continuar ou excluir uma conversa. **Nova conversa** preserva as anteriores.
+O histórico pode ser retomado no desktop pela página **Lupe**, usando a mesma
+conta e o mesmo backend. Ao abrir o histórico no mobile, as conversas locais
+antigas são importadas; a cópia local só é removida após a confirmação do servidor.
+Se uma gravação falhar, a tela mantém a resposta e permite tentar salvar novamente.
+Alterações concorrentes retornam conflito e podem ser preservadas como nova conversa.
+Na tela da Lupe, o histórico e a conversa aberta são sincronizados automaticamente
+a cada 4 segundos, sem alterar o rascunho digitado. As consultas pausam quando a aba
+ou o aplicativo está em segundo plano, e retomam ao voltar. A sincronização também
+aguarda envios e gravações locais para não sobrescrever respostas pendentes.
+Falhas temporárias de conexão preservam o conteúdo e são tentadas novamente.
+
+O backend armazena o histórico em `dados/lupe.sqlite3`, criado automaticamente
+na primeira consulta. `LUPE_DB_PATH` permite escolher um caminho persistente no
+servidor. Inclua esse arquivo nos backups. A lista e o conteúdo são acessíveis
+somente pela conta autenticada; não é preciso alterar o banco financeiro Firebird.
+Rotas: `GET /lupe/conversas` e `GET/PUT/DELETE /lupe/conversas/<id>`.
+O desktop usa cookies pelo proxy `/api`, e o mobile usa o token Bearer.
 
 O módulo `lupe.py` do backend usa a mesma chave e modelo configurados para o
 Gemini. `LUPE_MODEL` permite escolher outro modelo apenas para o chat. Reinicie
-o backend depois de registrar a nova rota em `main.py`. A Lupe recebe somente
-as mensagens enviadas no chat; não consulta dados financeiros nem altera registros.
+o backend depois de atualizar os módulos da Lupe e seu registro em `main.py`.
 
-Verificação: `node --test tests/lupe.test.cjs` e `python -B tests/lupe_backend.py`.
+A Lupe consulta receitas, despesas, livro-caixa, doações, empréstimos, categorias,
+projetos, pendências, documentos e usuários, conforme as permissões da conta.
+Ela prepara cadastros de receitas, despesas, doações e empréstimos; alterações
+nesses registros, em categorias e usuários; exclusões de lançamentos, doações,
+empréstimos, documentos e usuários; e registros de pagamentos já realizados.
+Categorias novas podem ser incluídas ao cadastrar um lançamento.
+
+Toda escrita apresenta uma proposta com os dados e os botões **Confirmar** e
+**Cancelar** no mobile e no desktop. Exclusões mostram **Confirmar exclusão**.
+Escrever “sim” no chat não executa a operação. Se faltarem dados, a Lupe pergunta.
+Na conversa aparece apenas a confirmação pendente mais recente. Confirmar ou
+cancelar atualiza a própria resposta da Lupe, sem mensagens artificiais nem
+blocos de resultado duplicados. Falhas aparecem em avisos temporários e não
+entram na conversa salva. Confirmações e erros artificiais de versões antigas
+são ocultados quando reconhecidos na auditoria da própria conta.
+Doações podem ser destinadas à **Missão Guadalupe**, sem projeto específico;
+nesses casos o vínculo com projeto fica vazio e a prévia indica a missão.
+
+A Lupe também consulta pagamentos de despesas, parcelas de empréstimos e
+cobranças Pix de doação. Exemplos: “Quais despesas estão pagas?”, “Confira o
+pagamento da cobrança 123” e “Gere um Pix de R$ 50 para doação de Ana à missão”.
+Para gerar, informe o doador e o valor, ou peça que o doador escolha o valor.
+Confira a conta recebedora e confirme a proposta. O código aparece na própria
+resposta e pode ser selecionado e copiado no chat e retomado pelo histórico.
+Pedir o código de uma cobrança existente recupera o código sem gerar outra.
+
+A integração atual usa códigos para pagamento **dentro da Arkhé**. A geração
+não representa pagamento recebido nem cadastra uma doação automaticamente.
+A consulta bancária da Lupe é somente leitura e distingue o pagamento confirmado
+na Arkhé do recebimento já registrado no financeiro. Para ativar a geração real,
+configure `ARKHE_CLIENT_ID` e `ARKHE_CLIENT_SECRET` no backend, pelo ambiente ou
+por `arkhe.local.json`, e reinicie o servidor. Não envie essas credenciais no chat.
+
+Quando a Arkhé confirmar o pagamento e o recebimento for registrado, a Lupe envia
+automaticamente um agradecimento no chat, uma vez por cobrança. O backend acompanha
+as cobranças em segundo plano enquanto `main.py` estiver em execução, mesmo com
+o aplicativo fechado. Códigos gerados na Lupe recebem o aviso na própria conversa;
+os acompanhados em Doações aparecem em “Recebimentos de doações”. O celular e o
+desktop sincronizam o aviso, preservando o texto que estiver sendo digitado.
+As propostas expiram em 15 minutos e são compartilhadas pela mesma conta.
+O servidor revalida as permissões e o registro antes de executar e bloqueia
+confirmações repetidas. Se o resultado de uma falha for incerto, confira o
+cadastro antes de pedir outra operação; não há repetição automática de escritas.
+
+Exemplos: “Liste as despesas deste mês”, “Cadastre uma despesa de R$ 50”,
+“Altere o valor da despesa 10 para R$ 120” e “Exclua a doação 7”.
+A Lupe reutiliza as regras das rotas existentes. Cadastro de usuários/projetos,
+envio de anexos e transferências bancárias continuam nas funções específicas;
+registrar pagamento apenas atualiza o sistema.
+
+Verificação: `node --test tests/lupe.test.cjs tests/historicoLupe.test.cjs tests/historicoLupeServidor.test.cjs`,
+`python -B tests/lupe_backend.py`, `python -B tests/historico_lupe_backend.py`,
+`python -B tests/lupe_agente_backend.py` e `node --test tests/lupeDesktop.test.cjs`.
+`python -B tests/lupe_pagamentos_backend.py` verifica consultas e geração de códigos
+de doação com confirmação, usando respostas simuladas e SQLite temporário.
 Os testes usam respostas simuladas e não acessam a IA nem o banco.

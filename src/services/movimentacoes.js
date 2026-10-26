@@ -11,8 +11,9 @@ async function cabecalho() {
 
 export async function listarMovimentacoes() {
     const dados = await requisicaoApi("/livro-caixa", { headers: await cabecalho() });
-    if (!Array.isArray(dados.movimentacoes)) throw new Error("A API não retornou a lista de movimentações.");
-    return dados.movimentacoes;
+    const lista = Array.isArray(dados) ? dados : dados.movimentacoes || dados.livro_caixa || dados.dados;
+    if (!Array.isArray(lista)) throw new Error("A API não retornou a lista de movimentações.");
+    return lista;
 }
 
 export async function listarCategorias() {
@@ -23,8 +24,9 @@ export async function listarCategorias() {
 
 export async function listarProjetos() {
     const dados = await requisicaoApi("/projetos", { headers: await cabecalho() });
-    if (!Array.isArray(dados.projetos)) throw new Error("A API não retornou os projetos.");
-    return dados.projetos;
+    const lista = Array.isArray(dados) ? dados : dados.projetos || dados.dados;
+    if (!Array.isArray(lista)) throw new Error("A API não retornou os projetos.");
+    return lista;
 }
 
 export async function cadastrarMovimentacao(tipo, lancamento, anexo = null) {

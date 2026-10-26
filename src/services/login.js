@@ -21,15 +21,27 @@ export async function realizarLogin(email, senha) {
         body: JSON.stringify({ email: email.trim(), senha: senha }),
     });
 
-    if (!dados.sucesso || !dados.token || !dados.id_usuario || !dados.nome) {
-        throw new Error("A API não retornou os dados necessários para entrar.");
+    if (!dados.sucesso || typeof dados.token !== "string" || !dados.token.trim()) {
+        throw new Error("A API não retornou um token válido para entrar.");
     }
 
-    await validarAdministrador(dados.tipo);
+    // O contrato de login garante o token. Os dados completos do usuário vêm
+    // da rota autenticada, sem depender de campos extras na resposta do login.
+    const conta = await requisicaoApi("/minha-conta", {
+        headers: { Authorization: "Bearer " + dados.token },
+    });
+    const usuario = conta.usuario || conta.conta || conta;
+    const idUsuario = usuario.id_usuario ?? usuario.id ?? dados.id_usuario ?? dados.id ?? null;
+    const nome = usuario.nome || dados.nome || email.trim();
+    const emailUsuario = usuario.email || dados.email || email.trim();
+
+    if (usuario.tipo !== undefined && usuario.tipo !== null) {
+        await validarAdministrador(Number(usuario.tipo));
+    }
     await limparDados();
     try {
         await salvarToken(dados.token);
-        await salvarUsuario(dados.id_usuario, dados.nome, email.trim());
+        await salvarUsuario(idUsuario, nome, emailUsuario);
         await liberarBiometria();
     } catch {
         await limparDados();

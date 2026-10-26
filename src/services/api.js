@@ -1,5 +1,5 @@
-// IP do computador que está executando a API. Celular e computador devem usar a mesma rede.
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://10.92.11.39:5000").trim().replace(/\/+$/, "");
+// Backend online da aplicação. Pode ser sobrescrito por ambiente em builds alternativos.
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL || "https://ponsyx-guadalupe-back.zbbquj.easypanel.host").trim().replace(/\/+$/, "");
 
 function extrairMensagem(valor, profundidade = 0) {
     if (typeof valor === "string") {
